@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlTag">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yourplace_مكانك</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
+<script>
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+</script>
+
+<!-- TikTok Pixel Code (initialized later with the ID saved in store settings) -->
+<script>
+  !function (w, d, t) {
+    w.TMTK = w.TMTK || [];
+    var ttq = w.TMTK;
+    ttq.methods = ["page","track","identify"];
+    ttq.setAndDefer = function(target, method){ target[method] = function(){ target.push([method].concat(Array.prototype.slice.call(arguments,0))); }; };
+    for (var i = 0; i < ttq.methods.length; i++) { ttq.setAndDefer(ttq, ttq.methods[i]); }
+    ttq.load = function(sdkid) {
+      var s = d.createElement(t); s.async = !0; s.src = "https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=" + sdkid;
+      var a = d.getElementsByTagName(t)[0]; a.parentNode.insertBefore(s, a);
+    };
+  }(window, document, "script");
+</script>
+</head>
+<body>
+<div id="toast"></div>
+<a id="waFloat" class="float" target="_blank">💬</a>
+
+<button id="botFloat" class="bot-float" onclick="toggleBotPanel()" title="مساعد المتجر">🤖<span class="bot-badge" id="botBadge"></span></button>
+<div class="bot-panel" id="botPanel">
+  <div class="bot-header">
+    <b>🤖 مساعد <span id="botStoreName">المتجر</span></b>
+    <button class="btn small gray" style="margin:0;padding:4px 10px" onclick="toggleBotPanel()">X</button>
+  </div>
+  <div class="bot-messages" id="botMessages"></div>
+  <div class="bot-quick" id="botQuick"></div>
+  <div class="bot-input-row">
+    <input id="botInput" placeholder="اكتب سؤالك..." onkeydown="if(event.key==='Enter')sendBotMsg()">
+    <button class="btn small" onclick="sendBotMsg()">إرسال</button>
+  </div>
+</div>
+
+<div id="shipPolicyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:22px;max-width:500px;width:100%;max-height:80vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">📦 سياسة الشحن</h3>
+      <button class="btn small gray" onclick="hideShipPolicy()">X</button>
+    </div>
+    <div id="shipPolicyText" style="white-space:pre-line;line-height:1.8;color:#333"></div>
+  </div>
+</div>
+
+<header>
+  <div class="container" style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0">
+    <a href="index.html" style="text-decoration:none;color:inherit"><h2 id="sName">yourplace_مكانك</h2></a>
+    <nav>
+      <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
+      <a href="index.html"><span data-key="nav_store">المتجر</span></a>
+      <a onclick="cartToggle()" style="cursor:pointer"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <div id="storeCatBar" style="display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;"></div>
+  <div id="grid" class="products">جاري تحميل المنتجات...</div>
+</div>
+
+<div id="cart">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h4 style="margin:0" data-key="nav_cart">سلة المشتريات</h4>
+    <button class="btn small gray" onclick="cartToggle()">X</button>
+  </div>
+  <div id="cItems">فاضية</div>
+  <hr>
+  <p style="font-size:16px"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
+  <button class="btn" onclick="goToCheckout()" data-key="checkout_title">اتمام الطلب</button>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function drawStore(){
+  let grid = document.getElementById('grid');
+  let filtered = PROD.filter(x => x.active !== false && (currentFilter === 'all' || x.cat === currentFilter));
+  if(filtered.length === 0){ grid.innerHTML='<p style="text-align:center;color:var(--muted)">لا توجد منتجات حالياً في هذا القسم</p>'; return; }
+
+  grid.innerHTML = filtered.map((x, prodIdx) => {
+    let priceHtml = x.disc && x.disc < x.v
+      ? `<div class="price"><span style="text-decoration:line-through;color:var(--muted);font-size:14px">${x.v}</span> ${x.disc} ${i18n[LANG].currency}</div>`
+      : `<div class="price">${x.v} ${i18n[LANG].currency}</div>`;
+    let stockHtml = x.showStock && x.stock>0? `<div class="stock ${x.stock<5?'low':''}"> ${LANG=='ar'?'متبقي':'Remaining'} ${x.stock} ${i18n[LANG].pcs}</div>` : x.showStock && x.stock==0? `<div class="stock low">${LANG=='ar'?'نفذت الكمية':'Out of Stock'}</div>` : '';
+    let btnDisabled = x.stock<=0? 'disabled' : '';
+
+    let fakeCounterHtml = '';
+    if(SET.fakeCounterOn) {
+       let fakeBuyers = Math.floor(Math.random() * 12) + 4;
+       let fakeStock = Math.floor(Math.random() * parseInt(SET.fakeCounterNum)) + 2;
+       fakeCounterHtml = LANG === 'ar'
+         ? `<div style="color:red;font-size:12px;margin-top:5px">🔥 قام ${fakeBuyers} أشخاص بطلب هذا اليوم</div><div style="color:green;font-size:12px">متبقي ${fakeStock} قطع فقط في المخزن!</div>`
+         : `<div style="color:red;font-size:12px;margin-top:5px">🔥 ${fakeBuyers} person ordered this today</div><div style="color:green;font-size:12px">Only ${fakeStock} items left in stock!</div>`;
+    }
+
+    let mediaList = x.media || [];
+    if(mediaList.length === 0) mediaList = [{type:'image', src:'https://via.placeholder.com/200'}];
+
+    let mediaItemsHtml = mediaList.map((m, i) => {
+      let activeClass = i === 0 ? 'active' : '';
+      return m.type === 'video' ? `<video src="${m.src}" class="media-item-${prodIdx} ${activeClass}" controls muted></video>` : `<img src="${m.src}" class="media-item-${prodIdx} ${activeClass}">`;
+    }).join('');
+
+    let navHtml = mediaList.length > 1 ? `<button class="media-nav prev" onclick="event.stopPropagation();slideMedia(${prodIdx}, -1)">&#10095;</button><button class="media-nav next" onclick="event.stopPropagation();slideMedia(${prodIdx}, 1)">&#10094;</button>` : '';
+    let landingBtnHtml = (x.customLandingUrl && x.customLandingUrl.trim() !== '') ? `<button class="btn gray" style="margin-top:5px; font-size:13px; padding:6px; font-weight:bold; border: 1px solid var(--main);" onclick="window.open('${x.customLandingUrl}', '_blank')">👁️ رابط صفحة الهبوط المخصصة</button>` : '';
+
+    let bulkDiscountTextHtml = x.bulk_on ? (LANG === 'ar' ? `<div style="background:#fff3cd;color:#856404;padding:6px;border-radius:8px;font-size:12px;font-weight:700;margin:6px 0;text-align:center">🔥 اشتري ${x.bulk_qty} قطع ووفر ${x.bulk_disc}%</div>` : `<div style="background:#fff3cd;color:#856404;padding:6px;border-radius:8px;font-size:12px;font-weight:700;margin:6px 0;text-align:center">🔥 Buy ${x.bulk_qty} pieces and save ${x.bulk_disc}%</div>`) : '';
+
+    return `
+      <div class="card">
+        <div class="media-container" id="mediaCont${prodIdx}" style="cursor:pointer" onclick="location.href='product.html?id=${x.id}'">${mediaItemsHtml}${navHtml}</div>
+        <h4 style="cursor:pointer" onclick="location.href='product.html?id=${x.id}'">${x.n}</h4>
+        <p>${x.d ? x.d.substring(0,40) : ''}...</p>
+        ${priceHtml}${stockHtml}${fakeCounterHtml}
+        <button class="btn" onclick="addC('${x.id}')" ${btnDisabled}>${LANG=='ar'?'اضف للسلة':'Add to Cart'}</button>
+        ${landingBtnHtml}${bulkDiscountTextHtml}
+      </div>`;
+  }).join('');
+}
+
+function slideMedia(prodIdx, direction) {
+  let container = document.getElementById(`mediaCont${prodIdx}`);
+  let items = container.querySelectorAll(`.media-item-${prodIdx}`);
+  let activeIdx = Array.from(items).findIndex(el => el.classList.contains('active'));
+  items[activeIdx].classList.remove('active');
+  if(items[activeIdx].tagName === 'VIDEO') items[activeIdx].pause();
+  let nextIdx = activeIdx + direction;
+  if(nextIdx >= items.length) nextIdx = 0;
+  if(nextIdx < 0) nextIdx = items.length - 1;
+  items[nextIdx].classList.add('active');
+}
+
+window.onSettingsLoaded = function(){ drawStore(); };
+window.onProductsLoaded = function(){ drawStore(); };
+window.onLangChange = function(){ drawStore(); };
+window.onCartChange = function(){};
+
+updateCartBadge();
+renderCartDrawer();
+updateLangDOM();
+initApp();
+</script>
+</body>
+</html>

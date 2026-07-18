@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlTag">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المنتج - yourplace_مكانك</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
+<script>
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+</script>
+
+<!-- TikTok Pixel Code (initialized later with the ID saved in store settings) -->
+<script>
+  !function (w, d, t) {
+    w.TMTK = w.TMTK || [];
+    var ttq = w.TMTK;
+    ttq.methods = ["page","track","identify"];
+    ttq.setAndDefer = function(target, method){ target[method] = function(){ target.push([method].concat(Array.prototype.slice.call(arguments,0))); }; };
+    for (var i = 0; i < ttq.methods.length; i++) { ttq.setAndDefer(ttq, ttq.methods[i]); }
+    ttq.load = function(sdkid) {
+      var s = d.createElement(t); s.async = !0; s.src = "https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=" + sdkid;
+      var a = d.getElementsByTagName(t)[0]; a.parentNode.insertBefore(s, a);
+    };
+  }(window, document, "script");
+</script>
+</head>
+<body>
+<div id="toast"></div>
+<a id="waFloat" class="float" target="_blank">💬</a>
+
+<button id="botFloat" class="bot-float" onclick="toggleBotPanel()" title="مساعد المتجر">🤖<span class="bot-badge" id="botBadge"></span></button>
+<div class="bot-panel" id="botPanel">
+  <div class="bot-header">
+    <b>🤖 مساعد <span id="botStoreName">المتجر</span></b>
+    <button class="btn small gray" style="margin:0;padding:4px 10px" onclick="toggleBotPanel()">X</button>
+  </div>
+  <div class="bot-messages" id="botMessages"></div>
+  <div class="bot-quick" id="botQuick"></div>
+  <div class="bot-input-row">
+    <input id="botInput" placeholder="اكتب سؤالك..." onkeydown="if(event.key==='Enter')sendBotMsg()">
+    <button class="btn small" onclick="sendBotMsg()">إرسال</button>
+  </div>
+</div>
+
+<div id="shipPolicyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:22px;max-width:500px;width:100%;max-height:80vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">📦 سياسة الشحن</h3>
+      <button class="btn small gray" onclick="hideShipPolicy()">X</button>
+    </div>
+    <div id="shipPolicyText" style="white-space:pre-line;line-height:1.8;color:#333"></div>
+  </div>
+</div>
+
+<header>
+  <div class="container" style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0">
+    <a href="index.html" style="text-decoration:none;color:inherit"><h2 id="sName">yourplace_مكانك</h2></a>
+    <nav>
+      <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
+      <a href="index.html"><span data-key="nav_store">المتجر</span></a>
+      <a onclick="cartToggle()" style="cursor:pointer"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <div class="box" style="max-width:650px; margin:0 auto; padding:15px; border-radius:12px;">
+    <a href="index.html" class="btn gray small" style="display:inline-block;margin-bottom:15px;">← العودة للمتجر الرئيسية</a>
+
+    <div id="landingMedia" style="width:100%; max-height:450px; overflow:hidden; border-radius:12px; background:#fafafa;"></div>
+    <h1 id="landingTitle" style="text-align:center; margin:15px 0; font-size:26px;"></h1>
+    <div id="landingPrice" style="text-align:center; margin-bottom:15px;"></div>
+
+    <div id="lpTimerWrapper" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:20px;">
+      <div id="lpTimerText" style="margin-bottom:5px;"></div>
+      <div class="dynamic-timer-box">
+        <div><div class="timer-segment" id="lpHours">00</div><div class="timer-label">ساعة</div></div>
+        <div><div class="timer-segment" id="lpMins">00</div><div class="timer-label">دقيقة</div></div>
+        <div><div class="timer-segment" id="lpSecs">00</div><div class="timer-label">ثانية</div></div>
+      </div>
+    </div>
+
+    <div id="landingDesc" style="font-size:18px; line-height:1.8; color:#333; margin-bottom:25px; white-space:pre-line;"></div>
+    <hr>
+    <button class="btn green" id="landingBuyBtn" style="font-size:20px; padding:15px; position:sticky; bottom:10px; z-index:999; box-shadow:0 4px 15px rgba(0,0,0,0.2);">طلب المنتج الآن والدفع عند الاستلام 🛒</button>
+  </div>
+</div>
+
+<div id="cart">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h4 style="margin:0" data-key="nav_cart">سلة المشتريات</h4>
+    <button class="btn small gray" onclick="cartToggle()">X</button>
+  </div>
+  <div id="cItems">فاضية</div>
+  <hr>
+  <p style="font-size:16px"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
+  <button class="btn" onclick="goToCheckout()" data-key="checkout_title">اتمام الطلب</button>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function getProductIdFromUrl(){
+  let params = new URLSearchParams(window.location.search);
+  return params.get('id');
+}
+
+function buyNow(id){
+  if(addC(id)){
+    window.location.href = 'checkout.html';
+  }
+}
+
+function renderProductPage(){
+  let id = getProductIdFromUrl();
+  let p = PROD.find(x => x.id == id);
+  if(!p){
+    document.querySelector('.container .box').innerHTML = '<p style="text-align:center;color:var(--muted)">المنتج مش موجود أو اتشال من المتجر.</p><a href="index.html" class="btn">الرجوع للمتجر</a>';
+    return;
+  }
+
+  document.title = p.n + ' - ' + (SET.name || 'yourplace_مكانك');
+  document.getElementById('landingTitle').innerText = p.n;
+  document.getElementById('landingDesc').innerText = p.d || (LANG==='ar' ? 'لا يوجد وصف تفصيلي متوفر حالياً لهذا المنتج.' : 'No description available for this product.');
+
+  let priceHtml = p.disc && p.disc < p.v
+    ? `<span style="text-decoration:line-through;color:var(--muted);font-size:18px; margin-left:10px;">${p.v} ${i18n[LANG].currency}</span> <span style="color:var(--main); font-size:26px; font-weight:bold;">${p.disc} ${i18n[LANG].currency}</span>`
+    : `<span style="color:var(--main); font-size:26px; font-weight:bold;">${p.v} ${i18n[LANG].currency}</span>`;
+  document.getElementById('landingPrice').innerHTML = priceHtml;
+
+  let firstMedia = p.media && p.media[0] ? p.media[0] : {type:'image', src:'https://via.placeholder.com/400'};
+  document.getElementById('landingMedia').innerHTML = firstMedia.type === 'video'
+    ? `<video src="${firstMedia.src}" controls autoplay muted style="width:100%; height:100%; object-fit:contain;"></video>`
+    : `<img src="${firstMedia.src}" style="width:100%; height:100%; object-fit:contain;">`;
+
+  let buyBtn = document.getElementById('landingBuyBtn');
+  buyBtn.setAttribute('onclick', `buyNow('${p.id}');`);
+
+  let timerWrap = document.getElementById('lpTimerWrapper');
+  if(SET.countDownOn) {
+     timerWrap.style.display = 'block';
+     document.getElementById('lpTimerText').innerText = SET.countDownText;
+     startDynamicTimer('lpHours', 'lpMins', 'lpSecs');
+  } else {
+     timerWrap.style.display = 'none';
+  }
+}
+
+window.onSettingsLoaded = function(){ if(PROD.length) renderProductPage(); };
+window.onProductsLoaded = function(){ renderProductPage(); };
+window.onLangChange = function(){ renderProductPage(); };
+window.onCartChange = function(){};
+
+updateCartBadge();
+renderCartDrawer();
+updateLangDOM();
+initApp();
+</script>
+</body>
+</html>
