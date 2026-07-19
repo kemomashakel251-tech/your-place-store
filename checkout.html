@@ -192,10 +192,12 @@ async function finish(){
       let opt=CHK_OPTS[id]; let price = getPrice(p, CART[id]);
       let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
       let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+      let customSum = Object.values(opt.custom||{}).reduce((a,b)=>a+b,0);
       if(p.sz && p.sz.length && sizeSum != CART[id]) { toast(`مجموع المقاسات لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
       if(p.cl && p.cl.length && colorSum != CART[id]) { toast(`مجموع الالوان لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      if(p.customVariants && p.customVariants.length && customSum != CART[id]) { toast(`مجموع ${p.customVariants[0].name} لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
       if(CART[id]>p.stock){ toast(`${i18n[LANG].max_stock} ${p.stock}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
-      items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors});
+      items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors,custom:opt.custom||{}});
     }
 
     let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
@@ -236,15 +238,19 @@ function renderCheckout(){
 
   document.getElementById('checkList').innerHTML = noteHtml + countDownHtml + Object.keys(CART).map(id=>{
     let p=PROD.find(x=>x.id==id); if(!p) return '';
-    if(!CHK_OPTS[id])CHK_OPTS[id]={q:CART[id],sizes:{},colors:{}};
+    if(!CHK_OPTS[id])CHK_OPTS[id]={q:CART[id],sizes:{},colors:{},custom:{}};
+    if(!CHK_OPTS[id].custom) CHK_OPTS[id].custom = {};
     let opt = CHK_OPTS[id]; let totalQty = CART[id]; let price = getPrice(p, totalQty);
 
     let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+    let customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
     if(sizeSum==0 && p.sz && p.sz.length) opt.sizes[p.sz[0]] = totalQty;
     if(colorSum==0 && p.cl && p.cl.length) opt.colors[p.cl[0]] = totalQty;
+    if(customSum==0 && p.customVariants && p.customVariants.length) opt.custom[p.customVariants[0].name] = totalQty;
     sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+    customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
 
     let sizeHtml = p.sz && p.sz.length? `<div id="sizes-${id}" style="margin-top:10px;"><b>المقاسات:</b><br>`+ p.sz.map(s=>{
       let val = opt.sizes[s]||0; let isDisabled = (sizeSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
@@ -254,6 +260,11 @@ function renderCheckout(){
     let colorHtml = p.cl && p.cl.length? `<div id="colors-${id}" style="margin-top:10px;"><b>الألوان:</b><br>`+ p.cl.map(c=>{
       let val = opt.colors[c]||0; let isDisabled = (colorSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
       return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${c}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','colors','${c}',this.value)"></div>`
+    }).join('')+`</div>` : '';
+
+    let customHtml = p.customVariants && p.customVariants.length? `<div id="custom-${id}" style="margin-top:10px;">`+ p.customVariants.map(cv=>{
+      let val = opt.custom[cv.name]||0; let isDisabled = (customSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
+      return `<div><b>${cv.name}:</b><br><div style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','custom','${cv.name}',this.value)"></div></div>`
     }).join('')+`</div>` : '';
 
     let descriptionHtml = p.d ? `<p style="color:var(--muted); font-size:14px; margin: 8px 0; white-space: pre-line;">${p.d}</p>` : '';
@@ -284,6 +295,7 @@ function renderCheckout(){
       ${descriptionHtml}
       ${sizeHtml}
       ${colorHtml}
+      ${customHtml}
       <h3 style="color:var(--main); margin-top:12px;">السعر: ${price*totalQty} جنيه</h3>
     </div>`
   }).join('');

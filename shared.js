@@ -421,9 +421,19 @@ function initApp(){
       if(snap && snap.exists && snap.exists()){
         let adv = snap.data();
         if(adv.headerCode && adv.headerCode.trim()){
-          let div = document.createElement('div');
-          div.innerHTML = adv.headerCode;
-          document.head.appendChild(div);
+          let temp = document.createElement('div');
+          temp.innerHTML = adv.headerCode;
+          Array.from(temp.childNodes).forEach(node => {
+            if(node.tagName === 'SCRIPT'){
+              // سكريبت متحط عن طريق innerHTML ماينفعش يتنفذ لوحده، فبنعمله من جديد
+              let s = document.createElement('script');
+              Array.from(node.attributes).forEach(a => s.setAttribute(a.name, a.value));
+              s.text = node.textContent;
+              document.head.appendChild(s);
+            } else {
+              document.head.appendChild(node.cloneNode ? node.cloneNode(true) : node);
+            }
+          });
         }
       }
     }).catch(()=>{});

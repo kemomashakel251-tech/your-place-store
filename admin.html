@@ -616,7 +616,7 @@ nav a{padding:8px 12px;font-size:14px}
 <script>
 let ADMIN = JSON.parse(localStorage.adm||'{"mp":"0000"}');
 if(!ADMIN.mp) ADMIN.mp='0000';
-let SET=JSON.parse(localStorage.set||'{"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false,"headerCode":""}');
+let SET=JSON.parse(localStorage.set||'{"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false}');
 
 let PROD=[];
 let ORD=[];
@@ -2392,7 +2392,10 @@ function drawS(){
 
   fbPixelId.value=SET.fbPixelId||'';
   tiktokPixelId.value=SET.tiktokPixelId||'';
-  headerCode.value=SET.headerCode||'';
+  headerCode.value='';
+  getDoc(doc(db, "settings", "advanced")).then(snap=>{
+    if(snap.exists()) headerCode.value = snap.data().headerCode || '';
+  }).catch(()=>{});
   vodafoneOn.checked=SET.vodafoneOn||false;
   vodafoneNumber.value=SET.vodafoneNumber||'';
 
@@ -2420,7 +2423,6 @@ async function saveS(){
 
   SET.fbPixelId=fbPixelId.value.trim();
   SET.tiktokPixelId=tiktokPixelId.value.trim();
-  SET.headerCode=headerCode.value;
   SET.vodafoneOn=vodafoneOn.checked;
   SET.vodafoneNumber=vodafoneNumber.value.trim();
 
@@ -2434,6 +2436,7 @@ async function saveS(){
   
   await setDoc(doc(db, "settings", "main"), SET); 
   await setDoc(doc(db, "settings", "admin_auth"), {mp: ADMIN.mp||''});
+  await setDoc(doc(db, "settings", "advanced"), {headerCode: headerCode.value}, {merge: true});
 
   renderCategoriesDOM();
   checkStoreUpdates();
@@ -2561,7 +2564,12 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
         pixelsInitialized = true;
         if(SET.fbPixelId && typeof fbq !== 'undefined'){ fbq('init', SET.fbPixelId); fbq('track', 'PageView'); }
         if(SET.tiktokPixelId && typeof TMTK !== 'undefined' && TMTK.load){ TMTK.load(SET.tiktokPixelId); TMTK.push(['track', 'PageView']); }
-        if(SET.headerCode && SET.headerCode.trim()) injectHeaderCode(SET.headerCode);
+        getDoc(doc(db, "settings", "advanced")).then(advSnap=>{
+          if(advSnap.exists()){
+            let hc = advSnap.data().headerCode;
+            if(hc && hc.trim()) injectHeaderCode(hc);
+          }
+        }).catch(()=>{});
       }
     }
   }
