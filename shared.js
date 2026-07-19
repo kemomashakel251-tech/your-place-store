@@ -416,6 +416,18 @@ function initApp(){
       }
     });
 
+    // حمّل الإعدادات المتقدمة (كود الهيد) وحقنه في الصفحة
+    window.getDoc(window.doc(db, "settings", "advanced")).then(snap => {
+      if(snap && snap.exists && snap.exists()){
+        let adv = snap.data();
+        if(adv.headerCode && adv.headerCode.trim()){
+          let div = document.createElement('div');
+          div.innerHTML = adv.headerCode;
+          document.head.appendChild(div);
+        }
+      }
+    }).catch(()=>{});
+
     // عداد زيارات المتجر - يزيد مرة واحدة لكل تحميل للصفحة
     if(!visitCounted){
       visitCounted = true;

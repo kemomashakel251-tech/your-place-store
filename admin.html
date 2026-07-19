@@ -193,6 +193,7 @@ nav a{padding:8px 12px;font-size:14px}
         <a onclick="go('orders')" style="position:relative" data-key="nav_orders">الطلبات<span id="newOrderBadge" style="display:none;position:absolute;top:-6px;left:-10px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;min-width:16px;text-align:center"></span></a>
         <a onclick="go('dashboard')" data-key="nav_dash">الإحصائيات</a>
         <a onclick="go('settings')" data-key="nav_settings">الاعدادات</a>
+        <a onclick="go('advanced')">⚙️ متقدم</a>
         <a onclick="cartToggle()"><span data-key="nav_cart">السلة</span> 🛒 <b id="cNum">0</b></a>
         <a onclick="logout()" style="background:#333" data-key="logout">خروج</a>
       </span>
@@ -537,7 +538,41 @@ nav a{padding:8px 12px;font-size:14px}
     </div>
   </div>
 
-  <div id="checkout" class="page">
+  <div id="advanced" class="page">
+    <div class="box">
+      <h3>⚙️ الإعدادات المتقدمة</h3>
+
+      <h4>🌐 الدومين المخصص</h4>
+      <p style="color:var(--muted);font-size:14px;line-height:1.8">
+        لربط دومين خاص بمتجرك، اتبع الخطوات دي:<br>
+        1. ادخل على مزود الدومين بتاعك (GoDaddy / Namecheap / إلخ)<br>
+        2. روح إعدادات DNS<br>
+        3. أضف سجل <b>CNAME</b> بالمعلومات دي:
+      </p>
+      <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:10px;padding:16px;margin:10px 0;font-family:monospace;font-size:14px;line-height:2">
+        <div><b>الاسم/المضيف:</b> www (أو @ للنطاق الرئيسي)</div>
+        <div><b>النوع:</b> CNAME</div>
+        <div><b>القيمة:</b> <span id="currentDomain" style="color:var(--main)">...</span></div>
+        <div><b>TTL:</b> 3600 (أو الافتراضي)</div>
+      </div>
+      <label>الدومين المخصص (بعد ما تربطه)</label>
+      <input id="customDomain" placeholder="مثال: www.yourstore.com" type="text">
+      <p style="color:var(--muted);font-size:13px">⚠️ التغييرات بتاخد من 24 لـ 48 ساعة تتفعل</p>
+
+      <hr>
+
+      <h4>📝 كود الهيد (Header Code)</h4>
+      <p style="color:var(--muted);font-size:14px;line-height:1.8">
+        أضف أكواد التتبع (Facebook Pixel، Google Analytics، إلخ) هنا — هيتضاف تلقائياً في كل صفحات المتجر.
+      </p>
+      <p style="background:#fff3cd;color:#856404;padding:10px;border-radius:8px;font-size:13px">
+        ⚠️ ملاحظة: لا تضع كود Google Analytics أو Google Tag Manager هنا — أضفهم من إعداداتهم المخصصة في لوحة التحكم
+      </p>
+      <textarea id="headerCode" rows="10" placeholder="<!-- Facebook Pixel Code -->&#10;<script>&#10;  !function(f,b,e,v,n,t,s)...&#10;</script>&#10;<!-- End Facebook Pixel Code -->" style="font-family:monospace;font-size:13px"></textarea>
+
+      <button class="btn green" onclick="saveAdvanced()">💾 حفظ الإعدادات المتقدمة</button>
+    </div>
+  </div>
     <div class="box">
       <h3 data-key="checkout_title">اتمام الطلب</h3>
       <div id="checkList"></div>
@@ -847,6 +882,34 @@ function showShipPolicy(){
 }
 function hideShipPolicy(){ document.getElementById('shipPolicyOverlay').style.display='none'; }
 
+function drawAdvanced(){
+  let adv = JSON.parse(localStorage.advancedSettings || '{}');
+  let domainEl = document.getElementById('customDomain');
+  let headerEl = document.getElementById('headerCode');
+  let currentDomainEl = document.getElementById('currentDomain');
+  if(domainEl) domainEl.value = adv.customDomain || '';
+  if(headerEl) headerEl.value = adv.headerCode || '';
+  if(currentDomainEl){
+    let host = window.location.hostname;
+    currentDomainEl.innerText = host && host !== 'localhost' ? host : 'yourplace-31bd8.web.app';
+  }
+}
+
+async function saveAdvanced(){
+  let adv = {
+    customDomain: document.getElementById('customDomain').value.trim(),
+    headerCode: document.getElementById('headerCode').value
+  };
+  localStorage.advancedSettings = JSON.stringify(adv);
+  // حفظ في Firestore كمان عشان تتزامن على كل الأجهزة
+  try {
+    await setDoc(doc(db, "settings", "advanced"), adv);
+    toast('تم الحفظ ✅');
+  } catch(e) {
+    toast('تم الحفظ محلياً فقط — تحقق من الاتصال');
+  }
+}
+
 function go(id){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
   document.getElementById(id).classList.add('on');
@@ -856,6 +919,7 @@ function go(id){
   if(id=='suppliers') drawSuppliers();
   if(id=='orders'){ drawO(); clearNewOrderBadge(); }
   if(id=='settings')drawS();
+  if(id=='advanced') drawAdvanced();
   if(id=='dashboard')drawDashboard();
   
   if(id !== 'landingPage' && id !== 'checkout' && timerIntervalGlobal) {

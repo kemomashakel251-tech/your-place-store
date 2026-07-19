@@ -170,32 +170,53 @@ function applyCoupon(){
 }
 
 async function finish(){
+  // استنى Firebase يكون جاهز (لحد 8 ثواني)
+  let waited = 0;
+  while(!window.db && waited < 80){ await new Promise(r=>setTimeout(r,100)); waited++; }
+  if(!window.db) return toast('خطأ في الاتصال، حاول تاني');
+
   let cn=document.getElementById('cn'), cp=document.getElementById('cp'), ca=document.getElementById('ca'), cg=document.getElementById('cg');
-  if(!cn.value) return toast('من فضلك اكتب الاسم'); if(!cp.value) return toast('من فضلك اكتب الموبايل'); if(!ca.value) return toast('من فضلك اكتب العنوان'); if(!cg.value) return toast('من فضلك اختار المحافظة');
-  let items=[];
-  for(let id in CART){
-    let p=PROD.find(x=>x.id==id); let opt=CHK_OPTS[id]; let price = getPrice(p, CART[id]);
-    let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0); let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
-    if(p.sz && p.sz.length && sizeSum!= CART[id]) return toast(`مجموع المقاسات لازم يساوي ${CART[id]} للمنتج ${p.n}`);
-    if(p.cl && p.cl.length && colorSum!= CART[id]) return toast(`مجموع الالوان لازم يساوي ${CART[id]} للمنتج ${p.n}`);
-    if(CART[id]>p.stock)return toast(`${i18n[LANG].max_stock} ${p.stock}`);
-    items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors});
+  if(!cn.value) return toast('من فضلك اكتب الاسم');
+  if(!cp.value) return toast('من فضلك اكتب الموبايل');
+  if(!ca.value) return toast('من فضلك اكتب العنوان');
+  if(!cg.value) return toast('من فضلك اختار المحافظة');
 
-    p.stock-=CART[id];
-    for(let c in opt.colors){ if(p.stockByColor && p.stockByColor[c]) p.stockByColor[c] -= opt.colors[c]; }
-    for(let s in opt.sizes){ if(p.stockBySize && p.stockBySize[s]) p.stockBySize[s] -= opt.sizes[s]; }
-    await window.setDoc(window.doc(db, "products", id), p);
+  let btn = document.querySelector('button.btn.green');
+  if(btn){ btn.disabled=true; btn.innerText='جاري الإرسال...'; }
+
+  try {
+    let items=[];
+    for(let id in CART){
+      let p=PROD.find(x=>x.id==id);
+      if(!p){ toast('منتج في السلة غير موجود، أعد المحاولة'); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      let opt=CHK_OPTS[id]; let price = getPrice(p, CART[id]);
+      let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
+      let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+      if(p.sz && p.sz.length && sizeSum != CART[id]) { toast(`مجموع المقاسات لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      if(p.cl && p.cl.length && colorSum != CART[id]) { toast(`مجموع الالوان لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      if(CART[id]>p.stock){ toast(`${i18n[LANG].max_stock} ${p.stock}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors});
+
+      p.stock-=CART[id];
+      for(let c in opt.colors){ if(p.stockByColor && p.stockByColor[c]) p.stockByColor[c] -= opt.colors[c]; }
+      for(let s in opt.sizes){ if(p.stockBySize && p.stockBySize[s]) p.stockBySize[s] -= opt.sizes[s]; }
+      await window.setDoc(window.doc(window.db, "products", id), p);
+    }
+
+    let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
+    if(SET.vodafoneOn && VF_SCREENSHOT){ newOrder.paymentMethod='vodafone'; newOrder.paymentScreenshot=VF_SCREENSHOT; }
+    if(typeof fbq !== 'undefined' && SET.fbPixelId){ fbq('track','Purchase',{value:LAST.tot,currency:'EGP'}); }
+    if(typeof TMTK !== 'undefined' && SET.tiktokPixelId){ TMTK.push(['track','CompletePayment',{value:LAST.tot,currency:'EGP'}]); }
+
+    await window.saveOrderToCloud(newOrder);
+    CART={};CHK_OPTS={};COUPON=0;VF_SCREENSHOT=null;saveCart();
+    toast('تم الطلب بنجاح ✅');
+    setTimeout(()=>{ window.location.href='index.html'; }, 1500);
+  } catch(e) {
+    console.error(e);
+    toast('حدث خطأ أثناء الإرسال، حاول تاني');
+    if(btn){ btn.disabled=false; btn.innerText='تأكيد الطلب'; }
   }
-
-  let newOrder = { id:Date.now(),date:new Date().toLocaleString('ar-EG'),items,subtotal: LAST.sub,bulkDiscount: LAST.bulkSave || 0,coupon: LAST.sub * (COUPON / 100),ship: LAST.ship,tot:LAST.tot,st:'new',c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
-  if(SET.vodafoneOn && VF_SCREENSHOT){ newOrder.paymentMethod='vodafone'; newOrder.paymentScreenshot=VF_SCREENSHOT; }
-  if(typeof fbq !== 'undefined' && SET.fbPixelId) { fbq('track', 'Purchase', { value: LAST.tot, currency: 'EGP' }); }
-  if(typeof TMTK !== 'undefined' && SET.tiktokPixelId) { TMTK.push(['track', 'CompletePayment', { value: LAST.tot, currency: 'EGP' }]); }
-
-  await window.saveOrderToCloud(newOrder);
-  CART={};CHK_OPTS={};COUPON=0;VF_SCREENSHOT=null;saveCart();
-  toast('تم الطلب بنجاح ');
-  window.location.href = 'index.html';
 }
 
 function renderCheckout(){
