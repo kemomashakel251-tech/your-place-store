@@ -213,8 +213,8 @@ async function finish(){
     toast('تم الطلب بنجاح ✅');
     setTimeout(()=>{ window.location.href='index.html'; }, 1500);
   } catch(e) {
-    console.error(e);
-    toast('حدث خطأ أثناء الإرسال، حاول تاني');
+    console.error('Order error:', e);
+    toast('خطأ: ' + (e.message || e.code || e));
     if(btn){ btn.disabled=false; btn.innerText='تأكيد الطلب'; }
   }
 }
