@@ -510,6 +510,13 @@ nav a{padding:8px 12px;font-size:14px}
 <input id="tiktokPixelId" placeholder="مثال: CXXXXXXXXXXXXXXXXX">
 
 <hr>
+<h4>5.1 كود الهيد (Header Code)</h4>
+<p style="color:var(--muted);font-size:13px;margin-top:-4px">
+  استخدمه لأكواد تانية غير فيسبوك وتيك توك اللي فوق (زي Google Tag Manager، Google Analytics، أكواد توثيق الموقع، أو أي سكريبت تتبع تاني). ملاحظة: متحطش هنا كود بيكسل فيسبوك أو تيك توك تاني، لأنهم شغالين أوتوماتيك من الخانات اللي فوق وهيتكرر التتبع.
+</p>
+<textarea id="headerCode" placeholder="حط هنا كود الـ <script> أو <meta> اللي عايز يتضاف لكل صفحات المتجر" rows="6" style="direction:ltr;text-align:left;font-family:monospace,monospace"></textarea>
+
+<hr>
 <h4>6. فودافون كاش</h4>
 <div class="switch">
   <input type="checkbox" id="vodafoneOn">
@@ -609,7 +616,7 @@ nav a{padding:8px 12px;font-size:14px}
 <script>
 let ADMIN = JSON.parse(localStorage.adm||'{"mp":"0000"}');
 if(!ADMIN.mp) ADMIN.mp='0000';
-let SET=JSON.parse(localStorage.set||'{"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false}');
+let SET=JSON.parse(localStorage.set||'{"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false,"headerCode":""}');
 
 let PROD=[];
 let ORD=[];
@@ -1283,7 +1290,8 @@ function toCheckout(){
   checkList.innerHTML= noteHtml + countDownHtml + Object.keys(CART).map(id=>{
     let p=PROD.find(x=>x.id==id);
     if(!p) return '';
-    if(!CHK_OPTS[id])CHK_OPTS[id]={q:CART[id],sizes:{},colors:{}};
+    if(!CHK_OPTS[id])CHK_OPTS[id]={q:CART[id],sizes:{},colors:{},custom:{}};
+    if(!CHK_OPTS[id].custom) CHK_OPTS[id].custom = {};
 
     let opt = CHK_OPTS[id];
     let totalQty = CART[id];
@@ -1291,10 +1299,13 @@ function toCheckout(){
 
     let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+    let customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
     if(sizeSum==0 && p.sz.length) opt.sizes[p.sz[0]] = totalQty;
     if(colorSum==0 && p.cl.length) opt.colors[p.cl[0]] = totalQty;
+    if(customSum==0 && p.customVariants && p.customVariants.length) opt.custom[p.customVariants[0].name] = totalQty;
     sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+    customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
 
     let sizeHtml = p.sz.length? `<div><b>المقاسات:</b><br>`+ p.sz.map(s=>{
       let val = opt.sizes[s]||0;
@@ -1316,6 +1327,16 @@ function toCheckout(){
       </div>`
     }).join('')+`</div>` : '';
 
+    let customHtml = (p.customVariants && p.customVariants.length)? p.customVariants.map(cv=>{
+      let val = opt.custom[cv.name]||0;
+      let usedElsewhere = customSum - val;
+      let remaining = totalQty - usedElsewhere;
+      let isDisabled = remaining <= 0 && val == 0;
+      return `<div><b>${cv.name}:</b><br><div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+        <input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;${isDisabled?'background:#e0e0e0;cursor:not-allowed':''}" oninput="setDist('${id}','custom','${cv.name}',this.value)">
+      </div></div>`
+    }).join('') : '';
+
     let descriptionHtml = p.d ? `<p style="color:var(--muted); font-size:14px; margin: 8px 0; white-space: pre-line;">${p.d}</p>` : '';
 
     let checkMediaList = p.media && p.media.length ? p.media : [{type:'image', src:'https://via.placeholder.com/200'}];
@@ -1334,6 +1355,7 @@ function toCheckout(){
       ${descriptionHtml}
       ${sizeHtml}
       ${colorHtml}
+      ${customHtml}
       <h3 style="color:var(--main)">السعر: ${price*totalQty} جنيه</h3>
     </div>`
   }).join('');
@@ -1448,14 +1470,17 @@ async function finish(){
     let price = getPrice(p, CART[id]);
     let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
+    let customSum = Object.values(opt.custom||{}).reduce((a,b)=>a+b,0);
     if(sizeSum!= CART[id]) return toast(`مجموع المقاسات لازم يساوي ${CART[id]} للمنتج ${p.n}`);
     if(colorSum!= CART[id]) return toast(`مجموع الالوان لازم يساوي ${CART[id]} للمنتج ${p.n}`);
+    if(p.customVariants && p.customVariants.length && customSum!= CART[id]) return toast(`مجموع ${p.customVariants[0].name} لازم يساوي ${CART[id]} للمنتج ${p.n}`);
     if(CART[id]>p.stock)return toast(`${i18n[LANG].max_stock} ${p.stock}`);
-    items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors});
+    items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors,custom:opt.custom||{}});
     
     p.stock-=CART[id];
     for(let c in opt.colors){ if(p.stockByColor && p.stockByColor[c]) p.stockByColor[c] -= opt.colors[c]; }
     for(let s in opt.sizes){ if(p.stockBySize && p.stockBySize[s]) p.stockBySize[s] -= opt.sizes[s]; }
+    if(p.customVariants){ for(let cv of p.customVariants){ if(opt.custom && opt.custom[cv.name]) cv.stock -= opt.custom[cv.name]; } }
     
     await setDoc(doc(db, "products", id), p);
   }
@@ -2076,7 +2101,12 @@ function drawO(){
         colorsText = Object.entries(i.colors).map(([k,v])=>`${k}: ${v}`).join(' - ');
         colorsText = `<div style="margin-right:15px;color:#555">الوان: ${colorsText}</div>`;
       }
-      return `<div style="margin-bottom:10px"><b>${i.n}</b> x${i.q} ${sizesText} ${colorsText}</div>`
+      let customText = '';
+      if(i.custom && Object.keys(i.custom).length){
+        customText = Object.entries(i.custom).map(([k,v])=>`${k}: ${v}`).join(' - ');
+        customText = `<div style="margin-right:15px;color:#555">${customText}</div>`;
+      }
+      return `<div style="margin-bottom:10px"><b>${i.n}</b> x${i.q} ${sizesText} ${colorsText} ${customText}</div>`
     }).join('');
 
     let paymentHtml = o.paymentScreenshot ? `
@@ -2150,6 +2180,9 @@ async function returnStockForOrder(o){
       p.stockBySize = p.stockBySize || {};
       for(let s in item.sizes){ p.stockBySize[s] = (p.stockBySize[s] || 0) + (item.sizes[s] || 0); }
     }
+    if(item.custom && p.customVariants){
+      for(let cv of p.customVariants){ if(item.custom[cv.name]) cv.stock = (cv.stock || 0) + item.custom[cv.name]; }
+    }
     try { await setDoc(doc(db, "products", item.id), p); } catch(e){ console.error(e); }
   }
   if(window.loadProducts) await window.loadProducts();
@@ -2185,10 +2218,16 @@ function printInvoice(id){
       colorsText = Object.entries(i.colors).map(([k,v])=>`${k}: ${v}`).join(' - ');
     }
 
+    let customText = '-';
+    if(i.custom && Object.keys(i.custom).length){
+      customText = Object.entries(i.custom).map(([k,v])=>`${k}: ${v}`).join(' - ');
+    }
+
     return `<tr>
       <td>${i.n}</td>
       <td>${sizesText}</td>
       <td>${colorsText}</td>
+      <td>${customText}</td>
       <td>${qty}</td>
       <td>${price} ج</td>
       <td>${itemTotal} ج</td>
@@ -2231,7 +2270,7 @@ function printInvoice(id){
       
       <table>
         <thead>
-          <tr><th>المنتج</th><th>المقاس</th><th>اللون</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr>
+          <tr><th>المنتج</th><th>المقاس</th><th>اللون</th><th>ميزة إضافية</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr>
         </thead>
         <tbody>${items}</tbody>
       </table>
@@ -2353,6 +2392,7 @@ function drawS(){
 
   fbPixelId.value=SET.fbPixelId||'';
   tiktokPixelId.value=SET.tiktokPixelId||'';
+  headerCode.value=SET.headerCode||'';
   vodafoneOn.checked=SET.vodafoneOn||false;
   vodafoneNumber.value=SET.vodafoneNumber||'';
 
@@ -2380,6 +2420,7 @@ async function saveS(){
 
   SET.fbPixelId=fbPixelId.value.trim();
   SET.tiktokPixelId=tiktokPixelId.value.trim();
+  SET.headerCode=headerCode.value;
   SET.vodafoneOn=vodafoneOn.checked;
   SET.vodafoneNumber=vodafoneNumber.value.trim();
 
@@ -2520,9 +2561,31 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
         pixelsInitialized = true;
         if(SET.fbPixelId && typeof fbq !== 'undefined'){ fbq('init', SET.fbPixelId); fbq('track', 'PageView'); }
         if(SET.tiktokPixelId && typeof TMTK !== 'undefined' && TMTK.load){ TMTK.load(SET.tiktokPixelId); TMTK.push(['track', 'PageView']); }
+        if(SET.headerCode && SET.headerCode.trim()) injectHeaderCode(SET.headerCode);
       }
     }
   }
+
+  // بيضيف كود الهيد المخصص (اللي اتكتب في الاعدادات) لل <head> مرة واحدة بس،
+  // وبيشغل أي وسم <script> جواه لأن اللي بيتحط بـ innerHTML مباشرة ماينفعش يتنفذ
+  let headerCodeInjected = false;
+  function injectHeaderCode(html){
+    if(headerCodeInjected) return;
+    headerCodeInjected = true;
+    let temp = document.createElement('div');
+    temp.innerHTML = html;
+    Array.from(temp.childNodes).forEach(node => {
+      if(node.tagName === 'SCRIPT'){
+        let s = document.createElement('script');
+        Array.from(node.attributes).forEach(a => s.setAttribute(a.name, a.value));
+        s.text = node.textContent;
+        document.head.appendChild(s);
+      } else {
+        document.head.appendChild(node.cloneNode ? node.cloneNode(true) : node);
+      }
+    });
+  }
+  window.injectHeaderCode = injectHeaderCode;
 
   async function loadStats(){
     let snap = await getDoc(doc(db, "settings", "stats"));
