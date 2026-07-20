@@ -124,8 +124,8 @@ function drawStore(){
     return `
       <div class="card">
         <div class="media-container" id="mediaCont${prodIdx}" style="cursor:pointer" onclick="location.href='product.html?id=${x.id}'">${mediaItemsHtml}${navHtml}</div>
-        <h4 style="cursor:pointer" onclick="location.href='product.html?id=${x.id}'">${x.n}</h4>
-        <p>${x.d ? x.d.substring(0,40) : ''}...</p>
+        <h4 style="cursor:pointer" onclick="location.href='product.html?id=${x.id}'">${esc(x.n)}</h4>
+        <p>${x.d ? esc(x.d.substring(0,40)) : ''}...</p>
         ${priceHtml}${stockHtml}${fakeCounterHtml}
         <button class="btn" onclick="addC('${x.id}')" ${btnDisabled}>${LANG=='ar'?'اضف للسلة':'Add to Cart'}</button>
         ${landingBtnHtml}${bulkDiscountTextHtml}

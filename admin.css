@@ -1,0 +1,31 @@
+/* admin.css — styles used only by admin.html, on top of style.css.
+   Keep style.css linked before this file; do not duplicate rules that
+   already live there. */
+
+.tag{display:inline-block;background:#f1f3f5;padding:8px 14px;margin:5px;border-radius:20px;font-size:14px;font-weight:600}
+.tag span{cursor:pointer;color:var(--red);margin-right:6px}
+
+th{background:#f1f3f5;padding:12px;font-weight:700}
+td{padding:12px;border-bottom:1px solid #eee;text-align:center}
+.order{background:var(--card);padding:18px;border-radius:14px;margin-bottom:14px;box-shadow:0 2px 8px #0001}
+.badge{padding:6px 12px;border-radius:20px;color:#fff;font-size:13px;font-weight:700}
+.badge.new{background:#0d6efd}.badge.ok{background:#198754}.badge.cancel{background:var(--red)}
+.badge.ship{background:#0ea5e9}
+
+.switch{display:flex;align-items:center;gap:10px;margin:10px 0}
+.switch input{width:50px;height:26px}
+.stock-row{display:flex;gap:8px;align-items:center;margin:6px 0}
+.stock-row input{width:80px;margin:0}
+.stock-group{border:1px dashed #ddd;border-radius:12px;padding:12px;margin:10px 0;background:#fafbfc}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);padding:20px;border-radius:14px;box-shadow:0 2px 8px #0001;text-align:center;border:1px solid #eee}
+.stat-card h3{margin:0 0 8px;font-size:16px;color:var(--muted)}
+.stat-card p{margin:0;font-size:24px;font-weight:700;color:var(--main)}
+.gov{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+
+.preview-gallery { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.preview-item { width: 80px; height: 80px; position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.preview-item img, .preview-item video { width: 100%; height: 100%; object-fit: cover; }
+.preview-item .remove-btn { position: absolute; top: 2px; right: 2px; background: rgba(220,53,69,0.8); color: #fff; border: 0; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+
+body[dir="ltr"] #cart { left: auto; right: 20px; }

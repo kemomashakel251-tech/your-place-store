@@ -254,20 +254,20 @@ function renderCheckout(){
 
     let sizeHtml = p.sz && p.sz.length? `<div id="sizes-${id}" style="margin-top:10px;"><b>المقاسات:</b><br>`+ p.sz.map(s=>{
       let val = opt.sizes[s]||0; let isDisabled = (sizeSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${s}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','sizes','${s}',this.value)"></div>`
+      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(s)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','sizes','${esc(s)}',this.value)"></div>`
     }).join('')+`</div>` : '';
 
     let colorHtml = p.cl && p.cl.length? `<div id="colors-${id}" style="margin-top:10px;"><b>الألوان:</b><br>`+ p.cl.map(c=>{
       let val = opt.colors[c]||0; let isDisabled = (colorSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${c}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','colors','${c}',this.value)"></div>`
+      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(c)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','colors','${esc(c)}',this.value)"></div>`
     }).join('')+`</div>` : '';
 
     let customHtml = p.customVariants && p.customVariants.length? `<div id="custom-${id}" style="margin-top:10px;">`+ p.customVariants.map(cv=>{
       let val = opt.custom[cv.name]||0; let isDisabled = (customSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div><b>${cv.name}:</b><br><div style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','custom','${cv.name}',this.value)"></div></div>`
+      return `<div><b>${esc(cv.name)}:</b><br><div style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','custom','${esc(cv.name)}',this.value)"></div></div>`
     }).join('')+`</div>` : '';
 
-    let descriptionHtml = p.d ? `<p style="color:var(--muted); font-size:14px; margin: 8px 0; white-space: pre-line;">${p.d}</p>` : '';
+    let descriptionHtml = p.d ? `<p style="color:var(--muted); font-size:14px; margin: 8px 0; white-space: pre-line;">${esc(p.d)}</p>` : '';
 
     let checkMediaList = p.media && p.media.length ? p.media : [{type:'image', src:'https://via.placeholder.com/200'}];
     let checkMediaHtml = checkMediaList.length > 1
@@ -282,7 +282,7 @@ function renderCheckout(){
       <div style="display:flex; gap:12px; align-items:center;">
         <img src="${p.media && p.media[0]? p.media[0].src : 'https://via.placeholder.com/200'}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
         <div>
-          <h3 style="margin:0 0 4px 0;">${p.n}</h3>
+          <h3 style="margin:0 0 4px 0;">${esc(p.n)}</h3>
           <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
             <h4 style="margin:0; color:var(--muted)">الكمية:</h4>
             <button class="btn small gray" style="margin:0; padding:4px 10px;" onclick="updateCheckoutQty('${id}', -1)">-</button>

@@ -35,6 +35,14 @@ const i18n = {
 
 function toast(t){let e=document.getElementById('toast');if(!e)return;e.innerText=t;e.style.display='block';setTimeout(()=>e.style.display='none',2500)}
 
+// أي نص جاي من المستخدم (اسم منتج، وصف، اسم عميل، مقاس/لون مكتوب يدوي...) لازم
+// يتعدّى من هنا قبل ما يتحط جوه innerHTML، عشان محدش يقدر يحقن HTML/سكريبت
+// (XSS) عن طريق اسم منتج أو بيانات طلب.
+function esc(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function applyTheme(color){
   document.documentElement.style.setProperty('--main', color);
   document.documentElement.style.setProperty('--main-dark', color + 'cc');
@@ -100,7 +108,7 @@ function renderCartDrawer(){
     return `
     <div class="cart-item">
       ${previewTag}
-      <div style="flex:1"><b>${x.p.n}</b><br><span style="color:var(--muted)">${getPrice(x.p, x.q)} ${i18n[LANG].currency}</span></div>
+      <div style="flex:1"><b>${esc(x.p.n)}</b><br><span style="color:var(--muted)">${getPrice(x.p, x.q)} ${i18n[LANG].currency}</span></div>
       <div class="qty">
         <button class="btn small gray" onclick="chgQty('${x.id}',-1)">-</button>
         <b>${x.q}</b>
