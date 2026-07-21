@@ -33,7 +33,10 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
   db = firestore.getFirestore(app);
 
   window.saveOrderToCloud = async function(order){
-    await addDoc(collection(db, "orders"), {...order, id: Date.now(), createdAt: serverTimestamp()});
+    // نضمن إن كل طلب جديد ليه تاريخ مسجل، مهما كانت صفحة الدفع بعتت الحقل ده
+    // أو لأ، عشان التاريخ يظهر دايماً في لوحة التحكم.
+    let orderDate = order.date || new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'2-digit', day:'2-digit'});
+    await addDoc(collection(db, "orders"), {...order, date: orderDate, id: Date.now(), createdAt: serverTimestamp()});
   }
 
   // ---- بيانات المتجر: تتحمّل مرة واحدة بس عند الدخول ----

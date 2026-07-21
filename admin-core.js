@@ -115,6 +115,28 @@ function getOrderPriceWarning(o){
   return null;
 }
 
+// بيرجع تاريخ الطلب الحقيقي كـ Date object من حقل createdAt (اللي فايربيز
+// بيحطه أوتوماتيك وقت إنشاء الطلب) — ده أدق من الاعتماد بس على حقل "date"
+// النصي، اللي ممكن يكون فاضي لطلبات قديمة أو لو الاتصال قطع لحظة الإرسال.
+function getOrderDate(o){
+  if(o.createdAt && o.createdAt.seconds) return new Date(o.createdAt.seconds * 1000);
+  if(o.date){
+    let d = new Date(o.date);
+    if(!isNaN(d)) return d;
+  }
+  return null;
+}
+
+// بيرجع نص تاريخ جاهز للعرض — بيفضّل حقل "date" لو موجود، ولو مش موجود
+// بيرجع تاريخ createdAt منسّق، ولو ولا ده موجود بيرجع '-'.
+function formatOrderDate(o){
+  if(o.date) return o.date;
+  let d = getOrderDate(o);
+  if(!d) return '-';
+  return d.toLocaleDateString('ar-EG', {year:'numeric', month:'2-digit', day:'2-digit'}) +
+    ' ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+}
+
 let BOT_MSGS = JSON.parse(localStorage.botChat || '[]');
 const BOT_QUICK_REPLIES = [
   {label:'🆕 ايه الجديد؟', text:'ايه الجديد في المتجر؟'},

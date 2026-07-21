@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>المنتج - yourplace_مكانك</title>
+<meta name="description" content="تفاصيل المنتج، السعر، والدفع عند الاستلام على متجر مكانك">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -136,7 +140,7 @@ function renderProductPage(){
   let firstMedia = p.media && p.media[0] ? p.media[0] : {type:'image', src:'https://via.placeholder.com/400'};
   document.getElementById('landingMedia').innerHTML = firstMedia.type === 'video'
     ? `<video src="${firstMedia.src}" controls autoplay muted style="width:100%; height:100%; object-fit:contain;"></video>`
-    : `<img src="${firstMedia.src}" style="width:100%; height:100%; object-fit:contain;">`;
+    : `<img src="${firstMedia.src}" fetchpriority="high" alt="${esc(p.n)}" style="width:100%; height:100%; object-fit:contain;">`;
 
   let buyBtn = document.getElementById('landingBuyBtn');
   buyBtn.setAttribute('onclick', `buyNow('${p.id}');`);

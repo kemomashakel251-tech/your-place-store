@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>yourplace_مكانك</title>
+<meta name="description" content="تسوق أحدث المنتجات من متجر مكانك — توصيل سريع والدفع عند الاستلام">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -113,7 +117,8 @@ function drawStore(){
 
     let mediaItemsHtml = mediaList.map((m, i) => {
       let activeClass = i === 0 ? 'active' : '';
-      return m.type === 'video' ? `<video src="${m.src}" class="media-item-${prodIdx} ${activeClass}" controls muted></video>` : `<img src="${m.src}" class="media-item-${prodIdx} ${activeClass}">`;
+      let priorityAttr = (prodIdx === 0 && i === 0) ? 'fetchpriority="high"' : 'loading="lazy"';
+      return m.type === 'video' ? `<video src="${m.src}" ${priorityAttr} class="media-item-${prodIdx} ${activeClass}" controls muted></video>` : `<img src="${m.src}" ${priorityAttr} alt="${esc(x.n)}" class="media-item-${prodIdx} ${activeClass}">`;
     }).join('');
 
     let navHtml = mediaList.length > 1 ? `<button class="media-nav prev" onclick="event.stopPropagation();slideMedia(${prodIdx}, -1)">&#10095;</button><button class="media-nav next" onclick="event.stopPropagation();slideMedia(${prodIdx}, 1)">&#10094;</button>` : '';

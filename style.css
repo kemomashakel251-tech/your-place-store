@@ -9,7 +9,6 @@
   --muted:#666
 }
 *{box-sizing:border-box;font-family:'Cairo', system-ui, Arial;-webkit-tap-highlight-color:transparent}
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap');
 body{margin:0;background:var(--bg);color:var(--text);padding-bottom:80px;font-size:16px}
 header{background:var(--main);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px #0002}
 header h2{font-size:24px;margin:0;font-weight:700}

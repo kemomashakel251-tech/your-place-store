@@ -353,8 +353,12 @@ async function finish(){
     for(let c in opt.colors){ if(p.stockByColor && p.stockByColor[c]) p.stockByColor[c] -= opt.colors[c]; }
     for(let s in opt.sizes){ if(p.stockBySize && p.stockBySize[s]) p.stockBySize[s] -= opt.sizes[s]; }
     if(p.customVariants){ for(let cv of p.customVariants){ if(opt.custom && opt.custom[cv.name]) cv.stock -= opt.custom[cv.name]; } }
-    
-    await setDoc(doc(db, "products", id), p);
+
+    let stockUpdate = {stock: p.stock};
+    if(p.stockByColor) stockUpdate.stockByColor = p.stockByColor;
+    if(p.stockBySize) stockUpdate.stockBySize = p.stockBySize;
+    if(p.customVariants) stockUpdate.customVariants = p.customVariants;
+    await setDoc(doc(db, "products", id), stockUpdate, {merge: true});
   }
 
   let newOrder = {

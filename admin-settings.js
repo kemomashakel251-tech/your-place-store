@@ -88,7 +88,7 @@ function printAllOrders(){
     
     return `<tr>
       <td>${esc((o.orderNum || o.id).toString().slice(-6))}</td>
-      <td>${esc(o.date || '')}</td>
+      <td>${esc(formatOrderDate(o))}</td>
       <td>${o.c ? esc(o.c.n) : ''}</td>
       <td>${o.c ? esc(o.c.p + (o.c.p2 ? ` / ${o.c.p2}` : '')) : ''}</td>
       <td>${o.items ? o.items.length : 0}</td>

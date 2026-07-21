@@ -84,7 +84,7 @@ function drawO(){
           ${o.st=='new'?'جديد':o.st=='ship'?'اتشحن':o.st=='ok'?'تم التسليم':'ملغي'}
         </span>
       </div>
-      <p style="margin:6px 0;color:var(--muted)"><b>${esc(o.date || '')}</b></p>
+      <p style="margin:6px 0;color:var(--muted)"><b>${esc(formatOrderDate(o))}</b></p>
       ${priceWarning ? `<p style="background:#f8d7da;color:#842029;padding:8px 10px;border-radius:8px;font-size:13px;margin:6px 0;font-weight:700">⚠️ ${esc(priceWarning)}</p>` : ''}
       <p><b>${o.c ? esc(o.c.n) : ''}</b> - ${o.c ? esc(o.c.p) : ''}${o.c && o.c.p2 ? ` / ${esc(o.c.p2)}` : ''}</p>
       <p>${o.c ? esc(o.c.g) : ''} - ${o.c ? esc(o.c.a) : ''}</p>
@@ -226,7 +226,7 @@ function printInvoice(id){
       <h2>فاتورة مبيعات - ${esc(SET.name)}</h2>
       <div class="info">
         <b>رقم الطلب:</b> #${esc((o.orderNum || o.id).toString().slice(-6))} <br>
-        <b>التاريخ:</b> ${esc(o.date || '')} <br>
+        <b>التاريخ:</b> ${esc(formatOrderDate(o))} <br>
         <b>العميل:</b> ${cName} <br>
         <b>التليفون:</b> ${cPhone} <br>
         <b>المحافظة:</b> ${cGov} <br>
