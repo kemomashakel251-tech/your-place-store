@@ -48,7 +48,6 @@ function drawO(){
   
   let html = '';
   filteredORD.forEach(o=>{
-    let priceWarning = getOrderPriceWarning(o);
     let itemsHtml = (o.items || []).map(i=>{
       let sizesText = '';
       if(i.sizes && Object.keys(i.sizes).length){
@@ -85,7 +84,6 @@ function drawO(){
         </span>
       </div>
       <p style="margin:6px 0;color:var(--muted)"><b>${esc(formatOrderDate(o))}</b></p>
-      ${priceWarning ? `<p style="background:#f8d7da;color:#842029;padding:8px 10px;border-radius:8px;font-size:13px;margin:6px 0;font-weight:700">⚠️ ${esc(priceWarning)}</p>` : ''}
       <p><b>${o.c ? esc(o.c.n) : ''}</b> - ${o.c ? esc(o.c.p) : ''}${o.c && o.c.p2 ? ` / ${esc(o.c.p2)}` : ''}</p>
       <p>${o.c ? esc(o.c.g) : ''} - ${o.c ? esc(o.c.a) : ''}</p>
       <div style="border-top:1px dashed #ddd;padding-top:8px">${itemsHtml}</div>
@@ -161,7 +159,6 @@ function printInvoice(id){
   let cPhone = esc(o.c ? o.c.p + (o.c.p2 ? ` / ${o.c.p2}` : '') : '-');
   let cGov = esc(o.c ? o.c.g : '-');
   let cAddr = esc(o.c ? o.c.a : '-');
-  let priceWarning = getOrderPriceWarning(o);
   let shipping = Number(o.ship || 0);
   let couponDiscount = Number(o.coupon || 0);
   let bulkDiscount = Number(o.bulkDiscount || 0); 
@@ -233,7 +230,6 @@ function printInvoice(id){
         <b>العنوان:</b> ${cAddr} <br>
         <b>الحالة:</b> ${o.st=='new'?'جديد':o.st=='ok'?'تم التسليم':'ملغي'}
       </div>
-      ${priceWarning ? `<div style="background:#f8d7da;color:#842029;padding:10px;border-radius:8px;margin-bottom:15px;font-weight:bold">⚠️ ${esc(priceWarning)}</div>` : ''}
 
       <table>
         <thead>
