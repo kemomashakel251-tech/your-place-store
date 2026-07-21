@@ -396,12 +396,13 @@ function initApp(){
   Promise.all([
     import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js")
-  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment }]) => {
+  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment, runTransaction }]) => {
     const app = initializeApp({apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",authDomain: "yourplace-31bd8.firebaseapp.com",projectId: "yourplace-31bd8",storageBucket: "yourplace-31bd8.firebasestorage.app",messagingSenderId: "774952140342",appId: "1:774952140342:web:1f45cdbd0897e1884c2297"});
     db = getFirestore(app);
     window.db = db;
     window.setDoc = setDoc; window.doc = doc; window.getDoc = getDoc; window.getDocs = getDocs;
     window.collection = collection; window.addDoc = addDoc; window.serverTimestamp = serverTimestamp; window.increment = increment;
+    window.runTransaction = runTransaction;
     window.saveOrderToCloud = async function(order){ await addDoc(collection(db, "orders"), {...order, createdAt: serverTimestamp()}); };
 
     // Live settings fetch

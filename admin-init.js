@@ -3,7 +3,7 @@
 // (login state -> starts the protected admin listeners). Must load LAST.
 
 let db; 
-let collection, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp, deleteDoc;
+let collection, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, increment, runTransaction;
 
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js").then(({ initializeApp }) => {
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((firestore) => {
@@ -20,6 +20,8 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
   orderBy = firestore.orderBy;
   serverTimestamp = firestore.serverTimestamp;
   deleteDoc = firestore.deleteDoc;
+  increment = firestore.increment;
+  runTransaction = firestore.runTransaction;
   
   const app = initializeApp({
     apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",

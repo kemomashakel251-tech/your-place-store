@@ -203,18 +203,36 @@ async function finish(){
       if(CART[id]>p.stock){ toast(`${i18n[LANG].max_stock} ${p.stock}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
       items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors,custom:opt.custom||{}});
 
-      // خصم الكمية المطلوبة من المخزون — بنبعت بس الحقول المسموح للعميل (الغير
-      // مسجل دخول) يعدلها حسب قواعد الحماية، مش المنتج كامل، عشان الحفظ ميترفضش
-      // بـ permission-denied.
-      p.stock-=CART[id];
-      for(let c in opt.colors){ if(p.stockByColor && p.stockByColor[c]) p.stockByColor[c] -= opt.colors[c]; }
-      for(let s in opt.sizes){ if(p.stockBySize && p.stockBySize[s]) p.stockBySize[s] -= opt.sizes[s]; }
-      if(p.customVariants){ for(let cv of p.customVariants){ if(opt.custom && opt.custom[cv.name]) cv.stock -= opt.custom[cv.name]; } }
-      let stockUpdate = {stock: p.stock};
-      if(p.stockByColor) stockUpdate.stockByColor = p.stockByColor;
-      if(p.stockBySize) stockUpdate.stockBySize = p.stockBySize;
-      if(p.customVariants) stockUpdate.customVariants = p.customVariants;
-      await window.setDoc(window.doc(db, "products", id), stockUpdate, {merge: true});
+      // خصم الكمية المطلوبة من المخزون جوه معاملة (transaction) ذرّية: بتقرا
+      // آخر نسخة من المنتج في قاعدة البيانات وقت التنفيذ نفسه وتخصم منها،
+      // فلو طلبين جم في نفس اللحظة على نفس المنتج، فايربيز بيعيد المحاولة
+      // تلقائيًا عشان محدش يمسح خصم التاني — ده بيشمل المخزون الكلي والألوان
+      // والمقاسات والميزة الإضافية المخصصة كلهم مع بعض.
+      await window.runTransaction(db, async (tx) => {
+        let ref = window.doc(db, "products", id);
+        let snap = await tx.get(ref);
+        if(!snap.exists()) throw new Error('المنتج غير موجود');
+        let data = snap.data();
+        if(CART[id] > (data.stock || 0)) throw new Error(`${i18n[LANG].max_stock}: ${data.stock || 0}`);
+        let update = { stock: (data.stock || 0) - CART[id] };
+
+        let newStockByColor = {...(data.stockByColor || {})};
+        for(let c in opt.colors){ if(opt.colors[c]) newStockByColor[c] = (newStockByColor[c] || 0) - opt.colors[c]; }
+        if(Object.keys(newStockByColor).length) update.stockByColor = newStockByColor;
+
+        let newStockBySize = {...(data.stockBySize || {})};
+        for(let s in opt.sizes){ if(opt.sizes[s]) newStockBySize[s] = (newStockBySize[s] || 0) - opt.sizes[s]; }
+        if(Object.keys(newStockBySize).length) update.stockBySize = newStockBySize;
+
+        if(data.customVariants){
+          update.customVariants = data.customVariants.map(cv => {
+            if(opt.custom && opt.custom[cv.name]) return {...cv, stock: (cv.stock || 0) - opt.custom[cv.name]};
+            return cv;
+          });
+        }
+
+        tx.set(ref, update, {merge: true});
+      });
     }
 
     let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
