@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>إتمام الطلب - yourplace_مكانك</title>
+<meta name="description" content="أكمل بيانات الشحن وأتمم طلبك بسهولة وأمان من متجر yourplace_مكانك.">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,8 +69,8 @@
     <nav>
       <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
       <a href="index.html"><span data-key="nav_store">المتجر</span></a>
-      <a id="navShipPolicy" onclick="showShipPolicy()" style="cursor:pointer;display:none">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
-      <a onclick="cartToggle()" style="cursor:pointer"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
+      <button type="button" id="navShipPolicy" onclick="showShipPolicy()" style="cursor:pointer;display:none;background:none;border:none;font:inherit;color:inherit;padding:0">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></button>
+      <button type="button" onclick="cartToggle()" style="cursor:pointer;background:none;border:none;font:inherit;color:inherit;padding:0"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></button>
     </nav>
   </div>
 </header>
