@@ -6,6 +6,16 @@
 
 let SET={"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false};
 let PROD=[];
+// عرض فوري من الكاش (لو موجود) لحد ما البيانات الحية توصل من Firebase،
+// ده بيقلل زمن ظهور أول محتوى (LCP) بشكل كبير على الزيارات المتكررة
+try{
+  let cachedSet = localStorage.getItem('cache_settings');
+  if(cachedSet) SET = JSON.parse(cachedSet);
+}catch(e){}
+try{
+  let cachedProd = localStorage.getItem('cache_products');
+  if(cachedProd) PROD = JSON.parse(cachedProd);
+}catch(e){}
 let currentFilter = 'all';
 let CART = JSON.parse(localStorage.getItem('cart') || '{}');
 let LANG = localStorage.lang || 'ar';
@@ -409,6 +419,7 @@ function initApp(){
     onSnapshot(doc(db, "settings", "main"), (snap) => {
       if(snap.exists()){
         SET = snap.data();
+        try{ localStorage.setItem('cache_settings', JSON.stringify(SET)); }catch(e){}
         applyTheme(SET.theme);
         let sNameEl = document.getElementById('sName');
         if(sNameEl) sNameEl.innerText = SET.name || 'yourplace_مكانك';
@@ -463,6 +474,7 @@ function initApp(){
       let snapshot = await getDocs(collection(db, "products"));
       PROD = [];
       snapshot.forEach((d) => { PROD.push({id: d.id,...d.data()}); });
+      try{ localStorage.setItem('cache_products', JSON.stringify(PROD)); }catch(e){}
       cleanCart();
       updateCartBadge();
       checkNewProducts();

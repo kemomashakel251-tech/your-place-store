@@ -7,6 +7,8 @@
 <meta name="description" content="تسوق أحدث المنتجات من متجر مكانك — توصيل سريع والدفع عند الاستلام">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 
@@ -159,6 +161,7 @@ window.onCartChange = function(){};
 updateCartBadge();
 renderCartDrawer();
 updateLangDOM();
+if(PROD.length) drawStore(); // ارسم فورًا من الكاش لو موجود، قبل ما نستنى Firebase
 initApp();
 </script>
 </body>

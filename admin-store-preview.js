@@ -419,8 +419,15 @@ pi.onchange = e => {
           canvas.height = height;
           let ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          
-          let dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+          // نحاول WebP الأول (حجم أصغر بكتير من JPEG بنفس الجودة تقريباً).
+          // لو المتصفح مش بيدعم تصدير WebP من canvas (زي بعض نسخ Safari
+          // القديمة)، toDataURL بترجع PNG صامتة بدل ما ترمي error، فبنكتشف
+          // ده بفحص الـ prefix ونرجع لـ JPEG كبديل.
+          let dataUrl = canvas.toDataURL('image/webp', 0.75);
+          if (!dataUrl.startsWith('data:image/webp')) {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          }
           TMP_MEDIA.push({ type: 'image', src: dataUrl });
           renderPreviewGallery();
         }
