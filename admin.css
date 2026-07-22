@@ -29,3 +29,50 @@ td{padding:12px;border-bottom:1px solid #eee;text-align:center}
 .preview-item .remove-btn { position: absolute; top: 2px; right: 2px; background: rgba(220,53,69,0.8); color: #fff; border: 0; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
 
 body[dir="ltr"] #cart { left: auto; right: 20px; }
+
+/* ============== استجابة الأدمن لكل المقاسات (موبايل/تابلت) ============== */
+@media(max-width:768px){
+  header .container{flex-wrap:wrap; gap:10px}
+  #menu{
+    width:100%;
+    display:flex;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    gap:6px;
+    padding-bottom:4px;
+    scrollbar-width:thin;
+  }
+  #menu a{white-space:nowrap; flex:0 0 auto; padding:8px 12px; font-size:13px}
+
+  table{font-size:13px}
+  th,td{padding:8px 6px}
+  .box{padding:16px}
+
+  .stock-row{flex-wrap:wrap}
+  .stock-row input{width:70px}
+
+  .responsive-row{flex-wrap:wrap}
+  .responsive-row input{min-width:0}
+
+  .responsive-grid-3{grid-template-columns:1fr 1fr}
+
+  .order > div[style*="justify-content:space-between"]{flex-wrap:wrap; gap:6px}
+
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:480px){
+  header h2{font-size:18px}
+  #menu a{padding:7px 10px; font-size:12.5px}
+
+  table{font-size:12px}
+  th,td{padding:6px 4px}
+
+  .responsive-grid-3{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr}
+
+  td[style*="min-width:220px"]{min-width:0}
+  .order{padding:14px}
+  .order .btn.small{flex:1 1 auto; min-width:0}
+}

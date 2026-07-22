@@ -136,7 +136,7 @@ async function addToMine(idx){
   let mp = MARKET_PRODUCTS[idx];
   if(!mp) return;
   try{
-    await addDoc(collection(db, "products"), {
+    let newProduct = {
       n: mp.name,
       cat: 'all',
       cost: 0,
@@ -159,10 +159,13 @@ async function addToMine(idx){
       active: mp.stock > 0,
       supplierId: ACTIVE_SUPPLIER_ID,
       sourceId: mp.id
-    });
+    };
+    let ref = await addDoc(collection(db, "products"), newProduct);
+    // بدل قراءة كل المنتجات تاني من فايربيز، بنضيفه لمصفوفة PROD المحلية
+    PROD.push({id: ref.id, ...newProduct});
     MARKET_PRODUCTS.splice(idx,1);
     drawMarketGrid();
-    await window.loadProducts();
+    if(document.getElementById('products').classList.contains('on')) drawP();
     toast('اتضاف لمكتبتك بنجاح');
   }catch(e){ console.error(e); alert('حدث خطأ أثناء إضافة المنتج'); }
 }
@@ -219,7 +222,10 @@ async function runSupplierSync(){
     await setDoc(doc(db, "suppliers", ACTIVE_SUPPLIER_ID), {lastSyncAt: serverTimestamp()}, {merge: true});
   }catch(e){ console.error(e); }
 
-  await window.loadProducts();
+  // myProducts عبارة عن مراجع (references) لنفس عناصر PROD، يعني هي بالفعل
+  // اتحدثت محلياً جوه اللوب فوق — مفيش داعي نعمل getDocs لكل المنتجات تاني
+  if(document.getElementById('products').classList.contains('on')) drawP();
+  if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
   await loadSuppliers();
   toast(`تم تحديث ${updatedCount} منتج بنجاح`);
   closeSyncBox();

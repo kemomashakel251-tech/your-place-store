@@ -48,7 +48,7 @@ async function addP(){
   if(!TMP_MEDIA.length) return alert('برجاء رفع صورة أو فيديو واحد على الأقل للمنتج');
   
   try {
-    await addDoc(collection(db, "products"), {
+    let newProduct = {
       n: pn.value,
       cat: document.getElementById('pCat').value,
       cost: +pcost.value || 0,
@@ -68,10 +68,17 @@ async function addP(){
       bulk_qty: 5,
       bulk_disc: 20,
       customLandingUrl: "" // قيمة افتراضية فارغة للرابط المخصص
-    });
-    
+    };
+    let ref = await addDoc(collection(db, "products"), newProduct);
+
+    // بدل ما نعمل getDocs لكل المنتجات تاني (قراءة كل الكولكشن من فايربيز)،
+    // بنضيف المنتج الجديد لمصفوفة PROD المحلية على طول ونرسم بيها — نفس
+    // النتيجة بصفر قراءات إضافية.
+    PROD.push({id: ref.id, ...newProduct});
+
     resetTags();
-    await window.loadProducts();
+    drawP();
+    if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
     toast('تمت إضافة المنتج بنجاح');
   } catch(error) {
     console.error("Error adding product: ", error);
@@ -83,7 +90,9 @@ async function delP(id){
   if(confirm(i18n[LANG].del_confirm_prod)){
     try {
       await deleteDoc(doc(db, "products", id));
-      await window.loadProducts();
+      PROD = PROD.filter(x => x.id != id);
+      drawP();
+      if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
       toast('تم الحذف بنجاح');
     } catch(error) {
       console.error(error);
@@ -144,7 +153,7 @@ async function updateP(id){
 
   try {
     let p = PROD.find(x=>x.id==id) || {};
-    await setDoc(doc(db, "products", id), {
+    let updated = {
       ...p,
       n: pn.value,
       cat: document.getElementById('pCat').value,
@@ -161,10 +170,16 @@ async function updateP(id){
       stockByColor: {...TMP_CL_STOCK},
       stockBySize: {...TMP_SZ_STOCK},
       customVariants: TMP_CUSTOM.filter(v => v.name && v.name.trim()),
-    });
+    };
+    await setDoc(doc(db, "products", id), updated);
+
+    // تحديث محلي بدل getDocs لكل المنتجات تاني
+    let idx = PROD.findIndex(x => x.id == id);
+    if(idx > -1) PROD[idx] = {...updated, id}; else PROD.push({...updated, id});
 
     resetTags();
-    await window.loadProducts();
+    drawP();
+    if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
     toast('تم التحديث بنجاح');
   } catch(error) {
     console.error("Error updating product: ", error);
@@ -177,7 +192,7 @@ async function toggleBulk(id, checked) {
   if(p) {
     p.bulk_on = checked ? 1 : 0;
     await setDoc(doc(db, "products", id), p);
-    await window.loadProducts();
+    drawP();
     toast('تم تعديل العرض');
   }
 }
@@ -226,7 +241,6 @@ function drawP(){
         <button class="btn small" onclick="editP('${x.id}')">تعديل</button>
         <button class="btn small red" onclick="delP('${x.id}')">حذف</button>
         <button class="btn small gray" style="background:#0ea5e9; color:#fff;" onclick="promptCustomLandingUrl('${x.id}')">رابط مخصص 🔗 (${hasUrlText})</button>
-        <button class="btn small green" onclick="shareProduct('${x.id}')">مشاركة 📤</button>
         <button class="btn small ${isActive?'gray':''}" style="${isActive?'background:#444;color:#fff':'background:var(--green);color:#fff'}" onclick="toggleActive('${x.id}')">${isActive?'⏸ إيقاف المنتج':'▶ تفعيل المنتج'}</button>
 
         <hr style="margin:8px 0">
@@ -261,7 +275,7 @@ async function toggleActive(id){
   if(!p) return;
   p.active = p.active === false ? true : false;
   await setDoc(doc(db, "products", id), p);
-  await window.loadProducts();
+  drawP();
   toast(p.active ? 'تم تفعيل المنتج' : 'تم إيقاف المنتج');
 }
 

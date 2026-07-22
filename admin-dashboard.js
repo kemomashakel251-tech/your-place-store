@@ -160,7 +160,8 @@ async function updateStockFromDash(id){
   p.stock = newStock;
   try {
     await setDoc(doc(db, "products", id), p);
-    await window.loadProducts();
+    drawDashboard();
+    if(document.getElementById('products').classList.contains('on')) drawP();
     toast('تم تحديث المخزون بنجاح');
   } catch(error) {
     console.error(error);

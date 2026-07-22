@@ -128,6 +128,7 @@ async function setSt(id,st){
 }
 
 async function returnStockForOrder(o){
+  let touchedIds = [];
   for(let item of (o.items || [])){
     // بنرجّع المخزون جوه معاملة (transaction) ذرّية: بتقرا آخر نسخة من المنتج
     // في قاعدة البيانات وقت التنفيذ نفسه وتزود عليها، فمحدش يمسح تعديل حصل
@@ -160,9 +161,25 @@ async function returnStockForOrder(o){
 
         tx.set(ref, update, {merge: true});
       });
+      touchedIds.push(item.id);
     } catch(e){ console.error(e); }
   }
-  if(window.loadProducts) await window.loadProducts();
+
+  // بدل ما نعمل getDocs لكل منتجات المتجر عشان نحدّث مخزون كام منتج بس،
+  // بنجيب المنتجات اللي فعلاً اتأثرت بالإلغاء ده بس (getDoc مفرد لكل واحد)
+  // ونحدّث نسختها المحلية في PROD — فرق كبير في عدد القراءات مع كل إلغاء طلب.
+  for(let id of touchedIds){
+    try{
+      let snap = await getDoc(doc(db, "products", id));
+      if(snap.exists()){
+        let fresh = {id, ...snap.data()};
+        let idx = PROD.findIndex(p => p.id === id);
+        if(idx > -1) PROD[idx] = fresh; else PROD.push(fresh);
+      }
+    }catch(e){ console.error(e); }
+  }
+  if(document.getElementById('products').classList.contains('on')) drawP();
+  if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
 }
 
 function printInvoice(id){

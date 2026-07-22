@@ -16,7 +16,7 @@ let visitCounted = false;
 
 const i18n = {
   ar: {
-    nav_store: "المتجر", nav_cart: "السلة",
+    nav_store: "المتجر", nav_cart: "السلة", nav_ship_policy: "سياسة الشحن",
     show_stock_lbl: "اظهار المخزون الكلي للعميل ✓", sizes: "المقاسات", colors: "الالوان",
     checkout_title: "إتمام الطلب", shipping_info: "بيانات الشحن", apply_btn: "تطبيق", confirm_order: "تأكيد الطلب", cancel_btn: "إلغاء", count_lbl: "العدد",
     empty_cart: "السلة فارغة", item_out: "المنتج نفذ", added_cart: "تم الإضافة للسلة", max_stock: "المخزون الكلي المتاح فقط", select_size: "اختار مقاس لـ", select_color: "اختار لون لـ",
@@ -24,7 +24,7 @@ const i18n = {
     placeholder_name: "الاسم بالكامل", placeholder_phone: "رقم الموبايل", placeholder_address: "العنوان بالتفصيل", placeholder_coupon: "كود الكوبون", select_gov: "اختار المحافظة"
   },
   en: {
-    nav_store: "Store", nav_cart: "Cart",
+    nav_store: "Store", nav_cart: "Cart", nav_ship_policy: "Shipping Policy",
     show_stock_lbl: "Show stock to client ✓", sizes: "Sizes", colors: "Colors",
     checkout_title: "Checkout", shipping_info: "Shipping Information", apply_btn: "Apply", confirm_order: "Confirm Order", cancel_btn: "Cancel", count_lbl: "Count",
     empty_cart: "Cart is empty", item_out: "Out of stock", added_cart: "Added to cart", max_stock: "Available stock limit reached", select_size: "Select size for ", select_color: "Select color for ",
@@ -417,6 +417,9 @@ function initApp(){
         renderCategoriesDOM();
         updateLangDOM();
         checkStoreUpdates();
+
+        let shipBtn = document.getElementById('navShipPolicy');
+        if(shipBtn) shipBtn.style.display = SET.shippingPolicyOn ? 'inline-flex' : 'none';
 
         if(!pixelsInitialized){
           pixelsInitialized = true;

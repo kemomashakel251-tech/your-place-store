@@ -307,7 +307,7 @@
       
       <hr>
       <h4>إدارة أقسام المتجر</h4>
-      <div style="display:flex; gap:8px;">
+      <div class="responsive-row" style="display:flex; gap:8px;">
         <input id="newCatName" placeholder="اسم القسم الجديد (مثلاً: أحذية)">
         <input id="newCatId" placeholder="معرف القسم بالإنجليزية (مثلاً: shoes)">
         <button class="btn small green" style="margin:10px 0; min-width:80px;" onclick="addCategory()">+ إضافة</button>
@@ -343,7 +343,7 @@
   <input type="checkbox" id="countDownOn">
   <label for="countDownOn"><b>تفعيل عداد "ينتهي العرض خلال"</b></label>
 </div>
-<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+<div class="responsive-grid-3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
   <div>
     <label>الساعات</label>
     <input id="countDownHours" type="number" value="2">

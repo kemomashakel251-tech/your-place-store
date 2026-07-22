@@ -104,20 +104,9 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
     if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
   }
 
-  async function loadOrders(){
-    let snapshot = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc")));
-    ORD = [];
-    snapshot.forEach((d) => { 
-      let data = d.data();
-      let isNumeric = v => v !== undefined && v !== null && /^\d+$/.test(String(v));
-      let stableNum = isNumeric(data.id) ? data.id : ((data.createdAt && data.createdAt.seconds) ? data.createdAt.seconds : d.id);
-      ORD.push({...data, orderNum: stableNum, id: d.id}); 
-    });
-    if(document.getElementById('orders').classList.contains('on')) drawO(); 
-    if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
-    updateNewOrderBadge();
-  }
-  window.loadOrders = loadOrders;
+  // ملحوظة: مفيش getDocs منفصلة لتحميل الطلبات هنا — onSnapshot تحت بيجيب
+  // النسخة الأولى من البيانات لوحده أول ما يشتغل، فقراءة إضافية هنا هتبقى
+  // تكرار وهدر لقراءات فايربيز مجاناً.
 
   // ---- الطلبات الجديدة: onSnapshot للأدمن فقط بعد تسجيل الدخول ----
   let protectedListenersStarted = false;
@@ -147,9 +136,12 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
     loadSuppliers();
   };
 
-  // بدون تسجيل دخول: حمّل الإعدادات والمنتجات بس (للمتجر المدمج)
+  // بدون تسجيل دخول: حمّل الإعدادات بس (اسم المتجر واللون لواجهة تسجيل
+  // الدخول) — قراءة مستند واحد رخيصة. مفيش داعي نحمّل كل المنتجات (getDocs
+  // لكل الكولكشن) قبل ما حد يسجل دخول أصلاً، لأن تبويب المتجر جوه الأدمن
+  // نفسه محجوب لحد تسجيل الدخول (menu مخفي)، فده كان هدر قراءات مجاني على
+  // فايربيز من كل فتحة لصفحة admin.html حتى من غير تسجيل دخول.
   loadSettings();
-  loadProducts();
 
   // Firebase Auth — بيتحمل مستقل ومتوازي
   import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({
