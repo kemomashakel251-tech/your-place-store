@@ -7,6 +7,7 @@ let collection, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, onSnapshot, que
 
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js").then(({ initializeApp }) => {
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((firestore) => {
+import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
   
   collection = firestore.collection;
   addDoc = firestore.addDoc;
@@ -31,6 +32,16 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
     messagingSenderId: "774952140342",
     appId: "1:774952140342:web:1f45cdbd0897e1884c2297"
   });
+
+  // App Check — نفس المفتاح المستخدم في shared.js بالظبط (نفس reCAPTCHA site
+  // key بتاع الدومين، مش مفتاح تاني). لازم يتستبدل قبل ما تفعّل الـ
+  // Enforcement على Firestore، وإلا لوحة التحكم نفسها هتتوقف عن الشغل معاه.
+  try{
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('6LegxmMtAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
+      isTokenAutoRefreshEnabled: true
+    });
+  }catch(e){ console.warn('App Check not initialized:', e); }
 
   db = firestore.getFirestore(app);
 
@@ -176,5 +187,6 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((
     });
   });
 
+}); 
 }); 
 }); 

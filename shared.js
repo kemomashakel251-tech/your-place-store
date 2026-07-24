@@ -53,6 +53,14 @@ function esc(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function safeImg(url){
+  let fallback = 'https://via.placeholder.com/200';
+  if(!url || typeof url !== 'string') return fallback;
+  let trimmed = url.trim();
+  if(!/^https?:\/\/[^\s"'<>]+$/i.test(trimmed)) return fallback;
+  return esc(trimmed);
+}
+
 function applyTheme(color){
   document.documentElement.style.setProperty('--main', color);
   document.documentElement.style.setProperty('--main-dark', color + 'cc');
@@ -405,9 +413,23 @@ function checkNewProducts(){
 function initApp(){
   Promise.all([
     import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js")
-  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment, runTransaction }]) => {
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js")
+  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment, runTransaction }, { initializeAppCheck, ReCaptchaV3Provider }]) => {
     const app = initializeApp({apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",authDomain: "yourplace-31bd8.firebaseapp.com",projectId: "yourplace-31bd8",storageBucket: "yourplace-31bd8.firebasestorage.app",messagingSenderId: "774952140342",appId: "1:774952140342:web:1f45cdbd0897e1884c2297"});
+
+    // App Check — بيتأكد إن أي طلب واصل لفايربيز جاي فعلاً من موقعك شغال في
+    // متصفح حقيقي (مش بوت بيضرب على الـ API مباشرة). REPLACE_WITH_RECAPTCHA_V3_SITE_KEY
+    // لازم تتستبدل بالـ Site Key (العام) اللي هتجيبه من:
+    // https://www.google.com/recaptcha/admin/create — واختار reCAPTCHA v3.
+    // من غير المفتاح ده، السطر ده هيفشل بصمت (catch) ومش هيوقف باقي الموقع.
+    try{
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider('6LegxmMtAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
+        isTokenAutoRefreshEnabled: true
+      });
+    }catch(e){ console.warn('App Check not initialized:', e); }
+
     db = getFirestore(app);
     window.db = db;
     window.setDoc = setDoc; window.doc = doc; window.getDoc = getDoc; window.getDocs = getDocs;
@@ -415,53 +437,90 @@ function initApp(){
     window.runTransaction = runTransaction;
     window.saveOrderToCloud = async function(order){ await addDoc(collection(db, "orders"), {...order, createdAt: serverTimestamp()}); };
 
-    // Live settings fetch
-    onSnapshot(doc(db, "settings", "main"), (snap) => {
+    // Settings (main + advanced) fetch — نفس فكرة كاش المنتجات بالظبط: بدل
+    // onSnapshot الحي اللي كان بيفتح قراءة لكل زائر جديد ويفضل مستمع، بقى
+    // getDoc واحد بس كل نص ساعة (نفس مدة كاش المنتجات)، والصفحات اللي بتتفتح
+    // في نفس النص ساعة بتاخد من الكاش المحلي من غير أي قراءة إضافية. الأثر
+    // الوحيد: لو الأدمن غيّر إعداد (اسم، لون، سياسة شحن...) والزائر فاتح
+    // تاب من قبل التغيير، مش هيشوفه إلا بعد ما الكاش ينتهي أو يعمل تحديث للصفحة.
+    const SETTINGS_CACHE_MS = 30 * 60 * 1000; // 30 دقيقة — نفس مدة كاش المنتجات
+
+    function applySettingsToDOM(){
+      applyTheme(SET.theme);
+      let sNameEl = document.getElementById('sName');
+      if(sNameEl) sNameEl.innerText = SET.name || 'yourplace_مكانك';
+      let waEl = document.getElementById('waFloat');
+      if(SET.wa && waEl) waEl.href = `https://wa.me/${SET.wa}`;
+      renderCategoriesDOM();
+      updateLangDOM();
+      checkStoreUpdates();
+
+      let shipBtn = document.getElementById('navShipPolicy');
+      if(shipBtn) shipBtn.style.display = SET.shippingPolicyOn ? 'inline-flex' : 'none';
+
+      if(!pixelsInitialized){
+        pixelsInitialized = true;
+        if(SET.fbPixelId && typeof fbq !== 'undefined'){ fbq('init', SET.fbPixelId); fbq('track', 'PageView'); }
+        if(SET.tiktokPixelId && typeof TMTK !== 'undefined' && TMTK.load){ TMTK.load(SET.tiktokPixelId); TMTK.push(['track', 'PageView']); }
+      }
+      if(typeof window.onSettingsLoaded === 'function') window.onSettingsLoaded();
+    }
+
+    async function loadSettings(force){
+      let cachedAt = +localStorage.getItem('cache_settings_at') || 0;
+      let cachedRaw = localStorage.getItem('cache_settings');
+      let isFresh = !force && cachedRaw && (Date.now() - cachedAt) < SETTINGS_CACHE_MS;
+      if(isFresh){
+        try{ SET = JSON.parse(cachedRaw); }catch(e){}
+        applySettingsToDOM();
+        return;
+      }
+      let snap = await getDoc(doc(db, "settings", "main"));
       if(snap.exists()){
         SET = snap.data();
-        try{ localStorage.setItem('cache_settings', JSON.stringify(SET)); }catch(e){}
-        applyTheme(SET.theme);
-        let sNameEl = document.getElementById('sName');
-        if(sNameEl) sNameEl.innerText = SET.name || 'yourplace_مكانك';
-        let waEl = document.getElementById('waFloat');
-        if(SET.wa && waEl) waEl.href = `https://wa.me/${SET.wa}`;
-        renderCategoriesDOM();
-        updateLangDOM();
-        checkStoreUpdates();
-
-        let shipBtn = document.getElementById('navShipPolicy');
-        if(shipBtn) shipBtn.style.display = SET.shippingPolicyOn ? 'inline-flex' : 'none';
-
-        if(!pixelsInitialized){
-          pixelsInitialized = true;
-          if(SET.fbPixelId && typeof fbq !== 'undefined'){ fbq('init', SET.fbPixelId); fbq('track', 'PageView'); }
-          if(SET.tiktokPixelId && typeof TMTK !== 'undefined' && TMTK.load){ TMTK.load(SET.tiktokPixelId); TMTK.push(['track', 'PageView']); }
-        }
-        if(typeof window.onSettingsLoaded === 'function') window.onSettingsLoaded();
+        try{
+          localStorage.setItem('cache_settings', JSON.stringify(SET));
+          localStorage.setItem('cache_settings_at', String(Date.now()));
+        }catch(e){}
+        applySettingsToDOM();
       }
-    });
+    }
+    window.loadSettings = loadSettings;
+    loadSettings();
 
-    // حمّل الإعدادات المتقدمة (كود الهيد) وحقنه في الصفحة
-    window.getDoc(window.doc(db, "settings", "advanced")).then(snap => {
-      if(snap && snap.exists && snap.exists()){
-        let adv = snap.data();
-        if(adv.headerCode && adv.headerCode.trim()){
-          let temp = document.createElement('div');
-          temp.innerHTML = adv.headerCode;
-          Array.from(temp.childNodes).forEach(node => {
-            if(node.tagName === 'SCRIPT'){
-              // سكريبت متحط عن طريق innerHTML ماينفعش يتنفذ لوحده، فبنعمله من جديد
-              let s = document.createElement('script');
-              Array.from(node.attributes).forEach(a => s.setAttribute(a.name, a.value));
-              s.text = node.textContent;
-              document.head.appendChild(s);
-            } else {
-              document.head.appendChild(node.cloneNode ? node.cloneNode(true) : node);
-            }
-          });
-        }
+    // حمّل الإعدادات المتقدمة (كود الهيد) وحقنه في الصفحة — بنفس منطق الكاش
+    async function loadAdvancedSettings(force){
+      let cachedAt = +localStorage.getItem('cache_settings_adv_at') || 0;
+      let cachedHeader = localStorage.getItem('cache_settings_adv_header');
+      let isFresh = !force && cachedHeader !== null && (Date.now() - cachedAt) < SETTINGS_CACHE_MS;
+      let headerCode = cachedHeader || '';
+      if(!isFresh){
+        try{
+          let snap = await window.getDoc(window.doc(db, "settings", "advanced"));
+          if(snap && snap.exists && snap.exists()){
+            headerCode = (snap.data().headerCode) || '';
+            localStorage.setItem('cache_settings_adv_header', headerCode);
+            localStorage.setItem('cache_settings_adv_at', String(Date.now()));
+          }
+        }catch(e){}
       }
-    }).catch(()=>{});
+      if(headerCode && headerCode.trim()){
+        let temp = document.createElement('div');
+        temp.innerHTML = headerCode;
+        Array.from(temp.childNodes).forEach(node => {
+          if(node.tagName === 'SCRIPT'){
+            // سكريبت متحط عن طريق innerHTML ماينفعش يتنفذ لوحده، فبنعمله من جديد
+            let s = document.createElement('script');
+            Array.from(node.attributes).forEach(a => s.setAttribute(a.name, a.value));
+            s.text = node.textContent;
+            document.head.appendChild(s);
+          } else {
+            document.head.appendChild(node.cloneNode ? node.cloneNode(true) : node);
+          }
+        });
+      }
+    }
+    loadAdvancedSettings();
 
     // عداد زيارات المتجر - يزيد مرة واحدة لكل تحميل للصفحة
     if(!visitCounted){
@@ -469,12 +528,30 @@ function initApp(){
       setDoc(doc(db, "settings", "stats"), { visits: increment(1) }, { merge: true }).catch(()=>{});
     }
 
-    // Products fetch (one-time + periodic refresh instead of a permanent live listener)
-    async function loadProducts(){
+    // Products fetch — كاش بمدة صلاحية (30 دقيقة) بدل ما نجيب كل المنتجات من
+    // فايربيز من جديد في كل فتح صفحة. زائر بيتصفح الرئيسية بعدين منتج بعدين
+    // الدفع كان بيعمل 3 قراءات كاملة للكولكشن (يعني لو 50 منتج = 150 قراءة
+    // لزيارة واحدة بس). دلوقتي أول صفحة بس هي اللي بتقرا من فايربيز، والصفحات
+    // اللي بعدها (لحد 30 دقيقة) بتستخدم نفس النسخة من غير أي قراءة إضافية.
+    const PRODUCTS_CACHE_MS = 30 * 60 * 1000; // 30 دقيقة
+    async function loadProducts(force){
+      let cachedAt = +localStorage.getItem('cache_products_at') || 0;
+      let isFresh = !force && (Date.now() - cachedAt) < PRODUCTS_CACHE_MS;
+      if(isFresh && PROD.length){
+        // الكاش لسه طازة — من غير أي قراءة جديدة من فايربيز
+        cleanCart();
+        updateCartBadge();
+        checkNewProducts();
+        if(typeof window.onProductsLoaded === 'function') window.onProductsLoaded();
+        return;
+      }
       let snapshot = await getDocs(collection(db, "products"));
       PROD = [];
       snapshot.forEach((d) => { PROD.push({id: d.id,...d.data()}); });
-      try{ localStorage.setItem('cache_products', JSON.stringify(PROD)); }catch(e){}
+      try{
+        localStorage.setItem('cache_products', JSON.stringify(PROD));
+        localStorage.setItem('cache_products_at', String(Date.now()));
+      }catch(e){}
       cleanCart();
       updateCartBadge();
       checkNewProducts();
@@ -482,6 +559,7 @@ function initApp(){
     }
     window.loadProducts = loadProducts;
     loadProducts();
-    // مفيش polling — بيتحدث مرة واحدة عند دخول الصفحة بس
+    // مفيش polling — بيتحدث تلقائي بس لما الكاش تعدت مدته (30 دقيقة) أو حد
+    // نده loadProducts(true) يدوي (زي بعد إضافة منتج جديد من الأدمن مثلاً)
   });
 }
