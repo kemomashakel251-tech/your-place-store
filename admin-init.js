@@ -38,7 +38,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
   // Enforcement على Firestore، وإلا لوحة التحكم نفسها هتتوقف عن الشغل معاه.
   try{
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider('6LegxmMtAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
+      provider: new ReCaptchaV3Provider('6LegxmMtAAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
       isTokenAutoRefreshEnabled: true
     });
   }catch(e){ console.warn('App Check not initialized:', e); }

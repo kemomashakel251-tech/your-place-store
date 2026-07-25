@@ -425,7 +425,7 @@ function initApp(){
     // من غير المفتاح ده، السطر ده هيفشل بصمت (catch) ومش هيوقف باقي الموقع.
     try{
       initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider('6LegxmMtAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
+        provider: new ReCaptchaV3Provider('6LegxmMtAAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
         isTokenAutoRefreshEnabled: true
       });
     }catch(e){ console.warn('App Check not initialized:', e); }
