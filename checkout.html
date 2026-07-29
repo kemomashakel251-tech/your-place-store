@@ -99,8 +99,19 @@
       <input id="vfScreenshot" type="file" accept="image/*">
       <div id="vfPreview" style="margin-top:8px"></div>
     </div>
+    <label>ملاحظة (اختياري)</label>
+    <textarea id="custNote" placeholder="أي ملاحظة تانية تحب تقولهالنا عن الطلب... (اختياري)" rows="2"></textarea>
     <button class="btn green" onclick="finish()" data-key="confirm_order">تأكيد الطلب</button>
     <a href="index.html" class="btn gray" data-key="cancel_btn">الغاء</a>
+  </div>
+</div>
+
+<div id="thankYouOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:32px 22px;max-width:480px;width:100%;text-align:center">
+    <div style="font-size:52px;margin-bottom:10px">✅</div>
+    <h3 style="margin:0 0 14px">تم استلام طلبك بنجاح!</h3>
+    <div id="thankYouText" style="white-space:pre-line;line-height:1.8;color:#333;margin-bottom:22px"></div>
+    <a href="index.html" class="btn">الرجوع للمتجر</a>
   </div>
 </div>
 
@@ -239,13 +250,17 @@ async function finish(){
 
     let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
     if(SET.vodafoneOn && VF_SCREENSHOT){ newOrder.paymentMethod='vodafone'; newOrder.paymentScreenshot=VF_SCREENSHOT; }
+    let custNoteVal = (document.getElementById('custNote').value || '').trim();
+    if(custNoteVal) newOrder.note = custNoteVal;
     if(typeof fbq !== 'undefined' && SET.fbPixelId){ fbq('track','Purchase',{value:LAST.tot,currency:'EGP'}); }
     if(typeof TMTK !== 'undefined' && SET.tiktokPixelId){ TMTK.push(['track','CompletePayment',{value:LAST.tot,currency:'EGP'}]); }
 
     await window.saveOrderToCloud(newOrder);
     CART={};CHK_OPTS={};COUPON=0;VF_SCREENSHOT=null;saveCart();
-    toast('تم الطلب بنجاح ✅');
-    setTimeout(()=>{ window.location.href='index.html'; }, 1500);
+    document.getElementById('thankYouText').innerText = (SET.thankYouMsg && SET.thankYouMsg.trim())
+      ? SET.thankYouMsg
+      : 'شكراً لطلبك! هيتم التواصل معاك قريبًا لتأكيد الطلب.';
+    document.getElementById('thankYouOverlay').style.display = 'flex';
   } catch(e) {
     console.error('Order error:', e);
     toast('خطأ: ' + (e.message || e.code || e));

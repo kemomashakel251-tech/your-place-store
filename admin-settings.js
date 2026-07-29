@@ -32,6 +32,8 @@ function drawS(){
   shippingPolicyText.value=SET.shippingPolicyText||'';
   altPhoneOn.checked=SET.altPhoneOn||false;
 
+  thankYouMsg.value=SET.thankYouMsg||'';
+
   drawCategorySettingsList();
 }
 
@@ -58,6 +60,8 @@ async function saveS(){
   SET.shippingPolicyOn=shippingPolicyOn.checked;
   SET.shippingPolicyText=shippingPolicyText.value;
   SET.altPhoneOn=altPhoneOn.checked;
+
+  SET.thankYouMsg=thankYouMsg.value;
   
   applyTheme(SET.theme);saveAll();sName.innerText=SET.name;
   

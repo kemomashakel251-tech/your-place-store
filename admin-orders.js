@@ -75,6 +75,11 @@ function drawO(){
         <img src="${esc(o.paymentScreenshot)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid #ddd" onclick="window.open('${esc(o.paymentScreenshot)}','_blank')">
       </div>` : '';
 
+    let noteHtml = o.note ? `
+      <div style="border-top:1px dashed #ddd;padding-top:8px;margin-top:8px;background:#eef6ff;padding:8px;border-radius:8px">
+        <b style="color:#0d6efd">📝 ملاحظة العميل:</b> ${esc(o.note)}
+      </div>` : '';
+
     html += `
     <div class="order" id="order-${o.id}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -88,6 +93,7 @@ function drawO(){
       <p>${o.c ? esc(o.c.g) : ''} - ${o.c ? esc(o.c.a) : ''}</p>
       <div style="border-top:1px dashed #ddd;padding-top:8px">${itemsHtml}</div>
       ${paymentHtml}
+      ${noteHtml}
       <h4 style="color:var(--main)">${i18n[LANG].total_lbl}: ${(o.tot || 0).toFixed(1)} ${i18n[LANG].currency}</h4>
        <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn small" style="background:#0ea5e9;color:#fff" onclick="setShipped('${o.id}')">اتشحن</button>
@@ -263,6 +269,7 @@ function printInvoice(id){
         <b>المحافظة:</b> ${cGov} <br>
         <b>العنوان:</b> ${cAddr} <br>
         <b>الحالة:</b> ${o.st=='new'?'جديد':o.st=='ok'?'تم التسليم':'ملغي'}
+        ${o.note ? `<br><b>ملاحظة العميل:</b> ${esc(o.note)}` : ''}
       </div>
 
       <table>
