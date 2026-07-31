@@ -78,7 +78,7 @@
   <div class="box" style="max-width:650px; margin:0 auto; padding:15px; border-radius:12px;">
     <a href="index.html" class="btn gray small" style="display:inline-block;margin-bottom:15px;">← العودة للمتجر الرئيسية</a>
 
-    <div id="landingMedia" style="width:100%; max-height:450px; overflow:hidden; border-radius:12px; background:#fafafa;"></div>
+    <div id="landingMedia" class="media-container" style="width:100%; height:380px; max-height:450px; border-radius:12px; background:#fafafa;"></div>
     <h1 id="landingTitle" style="text-align:center; margin:15px 0; font-size:26px;"></h1>
     <div id="landingPrice" style="text-align:center; margin-bottom:15px;"></div>
 
@@ -138,10 +138,18 @@ function renderProductPage(){
     : `<span style="color:var(--main); font-size:26px; font-weight:bold;">${p.v} ${i18n[LANG].currency}</span>`;
   document.getElementById('landingPrice').innerHTML = priceHtml;
 
-  let firstMedia = p.media && p.media[0] ? p.media[0] : {type:'image', src:'https://via.placeholder.com/400'};
-  document.getElementById('landingMedia').innerHTML = firstMedia.type === 'video'
-    ? `<video src="${firstMedia.src}" controls autoplay muted style="width:100%; height:100%; object-fit:contain;"></video>`
-    : `<img src="${firstMedia.src}" fetchpriority="high" alt="${esc(p.n)}" style="width:100%; height:100%; object-fit:contain;">`;
+  let mediaList = p.media && p.media.length ? p.media : [{type:'image', src:'https://via.placeholder.com/400'}];
+  let mediaItemsHtml = mediaList.map((m, i) => {
+    let activeClass = i === 0 ? 'active' : '';
+    let priorityAttr = i === 0 ? 'fetchpriority="high"' : 'loading="lazy"';
+    return m.type === 'video'
+      ? `<video src="${m.src}" ${i===0?'autoplay':''} muted loop playsinline controls class="lp-item ${activeClass}" style="object-fit:contain"></video>`
+      : `<img src="${m.src}" ${priorityAttr} alt="${esc(p.n)}" class="lp-item ${activeClass}" style="object-fit:contain">`;
+  }).join('');
+  let navHtml = mediaList.length > 1 ? `<button class="media-nav prev" onclick="slideLPMedia(-1)">&#10095;</button><button class="media-nav next" onclick="slideLPMedia(1)">&#10094;</button>` : '';
+  let dotsHtml = mediaList.length > 1 ? `<div class="media-dots">${mediaList.map((m,i)=>`<span class="${i===0?'active':''}"></span>`).join('')}</div>` : '';
+  document.getElementById('landingMedia').innerHTML = mediaItemsHtml + navHtml + dotsHtml;
+  startLPAutoplay(mediaList.length);
 
   let buyBtn = document.getElementById('landingBuyBtn');
   buyBtn.setAttribute('onclick', `buyNow('${p.id}');`);
@@ -154,6 +162,37 @@ function renderProductPage(){
   } else {
      timerWrap.style.display = 'none';
   }
+}
+
+// جاليري صفحة المنتج: نفس فكرة كروسفيد كروت المتجر الرئيسي، بس بمؤقت واحد
+// بس لأن الصفحة فيها منتج واحد ظاهر في نفس اللحظة.
+let LP_AUTOPLAY_TIMER = null;
+function slideLPMedia(direction){
+  let container = document.getElementById('landingMedia');
+  let items = container.querySelectorAll('.lp-item');
+  if(!items.length) return;
+  let activeIdx = Array.from(items).findIndex(el => el.classList.contains('active'));
+  items[activeIdx].classList.remove('active');
+  if(items[activeIdx].tagName === 'VIDEO') items[activeIdx].pause();
+  let nextIdx = activeIdx + direction;
+  if(nextIdx >= items.length) nextIdx = 0;
+  if(nextIdx < 0) nextIdx = items.length - 1;
+  items[nextIdx].classList.add('active');
+  if(items[nextIdx].tagName === 'VIDEO') items[nextIdx].play().catch(()=>{});
+
+  let dots = container.querySelectorAll('.media-dots span');
+  if(dots.length){
+    dots.forEach(d => d.classList.remove('active'));
+    if(dots[nextIdx]) dots[nextIdx].classList.add('active');
+  }
+}
+function startLPAutoplay(count){
+  if(LP_AUTOPLAY_TIMER) clearInterval(LP_AUTOPLAY_TIMER);
+  if(count <= 1) return;
+  LP_AUTOPLAY_TIMER = setInterval(() => slideLPMedia(1), 4000);
+  let cont = document.getElementById('landingMedia');
+  cont.onmouseenter = () => clearInterval(LP_AUTOPLAY_TIMER);
+  cont.onmouseleave = () => { LP_AUTOPLAY_TIMER = setInterval(() => slideLPMedia(1), 4000); };
 }
 
 window.onSettingsLoaded = function(){ if(PROD.length) renderProductPage(); };

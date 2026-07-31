@@ -448,7 +448,13 @@ function initApp(){
     function applySettingsToDOM(){
       applyTheme(SET.theme);
       let sNameEl = document.getElementById('sName');
-      if(sNameEl) sNameEl.innerText = SET.name || 'yourplace_مكانك';
+      if(sNameEl){
+        if(SET.logoImg){
+          sNameEl.innerHTML = `<img src="${SET.logoImg}" alt="${SET.name || ''}" class="store-logo-img">`;
+        } else {
+          sNameEl.innerText = SET.name || 'yourplace_مكانك';
+        }
+      }
       let waEl = document.getElementById('waFloat');
       if(SET.wa && waEl) waEl.href = `https://wa.me/${SET.wa}`;
       renderCategoriesDOM();

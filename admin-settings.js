@@ -2,6 +2,53 @@
 // coupon, shipping, countdown, fake counter, pixels, header code,
 // Vodafone Cash, shipping policy) and the "print all orders" report.
 
+// شعار المتجر: نفس أسلوب ضغط صور المنتجات (canvas -> WebP/JPEG data URL) بس
+// بارتفاع أصغر لأنه لوجو صغير في الهيدر. TMP_LOGO_IMG فضل null يعني "مفيش
+// تعديل معلّق"، لحد ما المستخدم يرفع صورة جديدة (تبقى dataURL) أو يمسح
+// اللوجو الحالي (تبقى '') — ده اللي بيفرّق بين "سيبه زي ما هو" و"امسحه".
+let TMP_LOGO_IMG = null;
+
+function drawLogoPreview(){
+  let box = document.getElementById('logoImgPreview');
+  let current = TMP_LOGO_IMG !== null ? TMP_LOGO_IMG : (SET.logoImg || '');
+  box.innerHTML = current
+    ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+         <img src="${current}" style="max-height:60px;max-width:200px;border-radius:8px;border:1px solid #eee;background:#f7f8fa">
+         <button type="button" class="btn small red" style="margin:0" onclick="removeLogoImg()">حذف الشعار</button>
+       </div>`
+    : `<p style="color:var(--muted);font-size:13px;margin:0">مفيش شعار مرفوع - اسم المتجر النصي هيظهر بدل منه</p>`;
+}
+
+function removeLogoImg(){
+  TMP_LOGO_IMG = '';
+  let input = document.getElementById('logoImgInput');
+  if(input) input.value = '';
+  drawLogoPreview();
+}
+
+document.getElementById('logoImgInput').addEventListener('change', function(e){
+  let file = e.target.files[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = function(ev){
+    let img = new Image();
+    img.onload = function(){
+      let canvas = document.createElement('canvas');
+      let max_h = 200;
+      let width = img.width, height = img.height;
+      if(height > max_h){ width *= max_h / height; height = max_h; }
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      let dataUrl = canvas.toDataURL('image/webp', 0.9);
+      if(!dataUrl.startsWith('data:image/webp')) dataUrl = canvas.toDataURL('image/png');
+      TMP_LOGO_IMG = dataUrl;
+      drawLogoPreview();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
 function drawS(){
   stName.value=SET.name;stWa.value=SET.wa;stColor.value=SET.theme||'#2563EB';cpOn.checked=SET.cpOn;cpCode.value=SET.cpCode;cpVal.value=SET.cpVal;
   waFloat.href=`https://wa.me/${SET.wa}`;gList.innerHTML='';
@@ -34,6 +81,9 @@ function drawS(){
 
   thankYouMsg.value=SET.thankYouMsg||'';
 
+  TMP_LOGO_IMG = null;
+  drawLogoPreview();
+
   drawCategorySettingsList();
 }
 
@@ -62,6 +112,8 @@ async function saveS(){
   SET.altPhoneOn=altPhoneOn.checked;
 
   SET.thankYouMsg=thankYouMsg.value;
+
+  if(TMP_LOGO_IMG !== null) SET.logoImg = TMP_LOGO_IMG;
   
   applyTheme(SET.theme);saveAll();sName.innerText=SET.name;
   
