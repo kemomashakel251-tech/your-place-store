@@ -66,6 +66,26 @@ function applyTheme(color){
   document.documentElement.style.setProperty('--main-dark', color + 'cc');
 }
 
+// أيقونات SVG بسيطة لأشهر منصات التواصل — بتتحط جوه دوائر ملوّنة بألوان كل
+// منصة (facebook/instagram/tiktok/whatsapp)، بدل الإيموجي العام اللي كان
+// مستخدم قبل كده.
+const ICON_WA = `<svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.44 9.9-9.9S17.5 2 12.04 2zm5.8 14.14c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.12.11-1.8-.11-.42-.13-.95-.31-1.64-.61-2.88-1.24-4.76-4.15-4.9-4.35-.14-.19-1.17-1.56-1.17-2.98s.75-2.11 1.01-2.4c.26-.28.58-.35.77-.35l.55.01c.18.01.42-.07.65.5.24.58.82 2.01.9 2.15.07.15.12.32.02.51-.1.19-.15.32-.29.49-.14.17-.3.39-.43.53-.14.15-.29.3-.13.59.17.28.74 1.22 1.58 1.98 1.09.97 2.01 1.27 2.29 1.42.29.14.46.12.63-.08.17-.2.73-.85.93-1.14.19-.29.38-.24.65-.14.26.09 1.67.79 1.96.93.29.14.48.21.55.34.07.13.07.73-.17 1.43z"/></svg>`;
+const ICON_FB = `<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>`;
+const ICON_TIKTOK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M16.5 2.5c.4 2.2 1.9 3.9 4.2 4.2v3.2c-1.5 0-2.9-.4-4.2-1.3v6.8c0 3.5-2.8 6.3-6.3 6.3S4 18.9 4 15.4c0-3.4 2.7-6.2 6-6.3v3.3c-1.6.1-2.9 1.4-2.9 3 0 1.7 1.4 3.1 3.1 3.1s3.1-1.4 3.1-3.1V2.5h3.2z"/></svg>`;
+const ICON_INSTA = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="#fff" stroke="none"/></svg>`;
+
+// بتتحط جوه أي صفحة عندها <div id="socialIconsBar">، وبتتظهر تلقائي لو
+// الأدمن ضاف أي رابط منهم في الإعدادات (فيسبوك/انستجرام/تيك توك).
+function renderSocialIconsBar(){
+  let bar = document.getElementById('socialIconsBar');
+  if(!bar) return;
+  let icons = [];
+  if(SET.fbUrl) icons.push(`<a class="social-icon-btn fb" href="${esc(SET.fbUrl)}" target="_blank" rel="noopener" title="فيسبوك">${ICON_FB}</a>`);
+  if(SET.instaUrl) icons.push(`<a class="social-icon-btn insta" href="${esc(SET.instaUrl)}" target="_blank" rel="noopener" title="انستجرام">${ICON_INSTA}</a>`);
+  if(SET.tiktokUrl) icons.push(`<a class="social-icon-btn tiktok" href="${esc(SET.tiktokUrl)}" target="_blank" rel="noopener" title="تيك توك">${ICON_TIKTOK}</a>`);
+  bar.innerHTML = icons.length ? `<div class="social-icons-bar">${icons.join('')}</div>` : '';
+}
+
 function updateLangDOM(){
   let h = document.getElementById('htmlTag');
   if(h){
@@ -460,6 +480,7 @@ function initApp(){
       renderCategoriesDOM();
       updateLangDOM();
       checkStoreUpdates();
+      renderSocialIconsBar();
 
       let shipBtn = document.getElementById('navShipPolicy');
       if(shipBtn) shipBtn.style.display = SET.shippingPolicyOn ? 'inline-flex' : 'none';

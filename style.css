@@ -33,6 +33,14 @@ nav a:hover{background:#fff;color:var(--main)}
 .media-nav.prev { right:5px; }
 .media-nav.next { left:5px; }
 
+.social-icons-bar{display:flex;justify-content:center;align-items:center;gap:16px;padding:22px 10px;flex-wrap:wrap}
+.social-icon-btn{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px #0002;transition:.2s;flex-shrink:0}
+.social-icon-btn:hover{transform:translateY(-3px)}
+.social-icon-btn.fb{background:#1877F2}
+.social-icon-btn.tiktok{background:#000}
+.social-icon-btn.wa{background:#25D366}
+.social-icon-btn.insta{background:radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)}
+
 .card h4{margin:12px 0 6px;font-size:16px;font-weight:700}
 .card p{color:var(--muted);margin:0 0 10px}
 .price{color:var(--main);font-size:18px;font-weight:700}

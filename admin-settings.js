@@ -75,6 +75,9 @@ function drawS(){
   vodafoneOn.checked=SET.vodafoneOn||false;
   vodafoneNumber.value=SET.vodafoneNumber||'';
 
+  instapayOn.checked=SET.instapayOn||false;
+  instapayNumber.value=SET.instapayNumber||'';
+
   shippingPolicyOn.checked=SET.shippingPolicyOn||false;
   shippingPolicyText.value=SET.shippingPolicyText||'';
   altPhoneOn.checked=SET.altPhoneOn||false;
@@ -83,9 +86,11 @@ function drawS(){
 
   aboutText.value=SET.aboutText||'';
   SET.phones = SET.phones || [];
-  SET.socials = SET.socials || [];
   drawPhonesList();
-  drawSocialsList();
+
+  fbUrl.value=SET.fbUrl||'';
+  instaUrl.value=SET.instaUrl||'';
+  tiktokUrl.value=SET.tiktokUrl||'';
 
   TMP_LOGO_IMG = null;
   drawLogoPreview();
@@ -114,26 +119,6 @@ function addPhone(){
   drawPhonesList();
 }
 
-function drawSocialsList(){
-  let box = document.getElementById('socialsList');
-  if(!SET.socials.length){ box.innerHTML = '<p style="color:var(--muted);font-size:13px">مفيش روابط مضافة لسه</p>'; return; }
-  box.innerHTML = SET.socials.map((s,i) => `
-    <div class="gov">
-      <input value="${s.label}" oninput="SET.socials[${i}].label=this.value" placeholder="اسم المنصة">
-      <input value="${s.url}" oninput="SET.socials[${i}].url=this.value" placeholder="الرابط" style="direction:ltr;text-align:left">
-      <button class="btn red" onclick="SET.socials.splice(${i},1);drawSocialsList()">X</button>
-    </div>`).join('');
-}
-function addSocial(){
-  let labelEl = document.getElementById('newSocialLabel'), urlEl = document.getElementById('newSocialUrl');
-  let label = labelEl.value.trim(), url = urlEl.value.trim();
-  if(!label || !url) return toast('اكتب اسم المنصة والرابط');
-  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
-  SET.socials.push({label, url});
-  labelEl.value=''; urlEl.value='';
-  drawSocialsList();
-}
-
 async function saveS(){
   SET.name=stName.value;SET.wa=stWa.value;SET.theme=stColor.value;SET.cpOn=cpOn.checked;SET.cpCode=cpCode.value;SET.cpVal=+cpVal.value||0;
   SET.skipCart=skipCart.checked;SET.clientNote=clientNote.value;
@@ -152,6 +137,9 @@ async function saveS(){
   SET.vodafoneOn=vodafoneOn.checked;
   SET.vodafoneNumber=vodafoneNumber.value.trim();
 
+  SET.instapayOn=instapayOn.checked;
+  SET.instapayNumber=instapayNumber.value.trim();
+
   SET.shippingPolicyOn=shippingPolicyOn.checked;
   SET.shippingPolicyText=shippingPolicyText.value;
   SET.altPhoneOn=altPhoneOn.checked;
@@ -159,6 +147,9 @@ async function saveS(){
   SET.thankYouMsg=thankYouMsg.value;
 
   SET.aboutText=aboutText.value;
+  SET.fbUrl=fbUrl.value.trim();
+  SET.instaUrl=instaUrl.value.trim();
+  SET.tiktokUrl=tiktokUrl.value.trim();
 
   if(TMP_LOGO_IMG !== null) SET.logoImg = TMP_LOGO_IMG;
   

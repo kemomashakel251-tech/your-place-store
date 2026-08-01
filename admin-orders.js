@@ -67,13 +67,19 @@ function drawO(){
       return `<div style="margin-bottom:10px"><b>${esc(i.n)}</b> x${esc(i.q)} ${sizesText} ${colorsText} ${customText}</div>`
     }).join('');
 
-    // paymentScreenshot عبارة عن data: URL ناتج من إعادة ترميز canvas (شوف checkout.html)،
-    // يعني منطقياً مايحتويش على quotes/markup — بس esc() هنا دفاع إضافي احتياطي.
-    let paymentHtml = o.paymentScreenshot ? `
+    // كل عنصر جوه payments عبارة عن data: URL ناتج من إعادة ترميز canvas (شوف
+    // checkout.html)، يعني منطقياً مايحتويش على quotes/markup — بس esc() هنا
+    // دفاع إضافي احتياطي. الطلبات القديمة (قبل دعم InstaPay) كانت بتحفظ
+    // paymentMethod/paymentScreenshot لوحدهم بدل مصفوفة payments، فبنعمل
+    // fallback ليهم عشان يفضلوا ظاهرين برضه.
+    let paymentsList = o.payments && o.payments.length
+      ? o.payments
+      : (o.paymentScreenshot ? [{method:o.paymentMethod||'vodafone', label:o.paymentMethod==='instapay'?'InstaPay':'فودافون كاش', screenshot:o.paymentScreenshot}] : []);
+    let paymentHtml = paymentsList.length ? paymentsList.map(pm => `
       <div style="border-top:1px dashed #ddd;padding-top:8px;margin-top:8px">
-        <b style="color:#856404">💜 دفع فودافون كاش - صورة التحويل:</b><br>
-        <img src="${esc(o.paymentScreenshot)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid #ddd" onclick="window.open('${esc(o.paymentScreenshot)}','_blank')">
-      </div>` : '';
+        <b style="color:${pm.method==='instapay'?'#0d47a1':'#856404'}">${pm.method==='instapay'?'🅿️':'💜'} دفع ${esc(pm.label)} - صورة التحويل:</b><br>
+        <img src="${esc(pm.screenshot)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid #ddd" onclick="window.open('${esc(pm.screenshot)}','_blank')">
+      </div>`).join('') : '';
 
     let noteHtml = o.note ? `
       <div style="border-top:1px dashed #ddd;padding-top:8px;margin-top:8px;background:#eef6ff;padding:8px;border-radius:8px">
@@ -269,6 +275,7 @@ function printInvoice(id){
         <b>المحافظة:</b> ${cGov} <br>
         <b>العنوان:</b> ${cAddr} <br>
         <b>الحالة:</b> ${o.st=='new'?'جديد':o.st=='ok'?'تم التسليم':'ملغي'}
+        ${(o.payments && o.payments.length) ? `<br><b>وسيلة الدفع:</b> ${o.payments.map(pm=>esc(pm.label)).join('، ')}` : (o.paymentScreenshot ? `<br><b>وسيلة الدفع:</b> ${o.paymentMethod==='instapay'?'InstaPay':'فودافون كاش'}` : '')}
         ${o.note ? `<br><b>ملاحظة العميل:</b> ${esc(o.note)}` : ''}
       </div>
 
