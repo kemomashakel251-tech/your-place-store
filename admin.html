@@ -387,13 +387,20 @@
 <textarea id="headerCode" placeholder="حط هنا كود الـ <script> أو <meta> اللي عايز يتضاف لكل صفحات المتجر" rows="6" style="direction:ltr;text-align:left;font-family:monospace,monospace"></textarea>
 
 <hr>
-<h4>6. فودافون كاش</h4>
+<h4>6. طرق الدفع الإلكتروني</h4>
 <div class="switch">
   <input type="checkbox" id="vodafoneOn">
   <label for="vodafoneOn"><b>تفعيل الدفع عن طريق فودافون كاش</b></label>
 </div>
 <label>رقم استقبال الرصيد (فودافون كاش)</label>
 <input id="vodafoneNumber" placeholder="مثال: 01012345678" inputmode="tel">
+
+<div class="switch" style="margin-top:16px">
+  <input type="checkbox" id="instapayOn">
+  <label for="instapayOn"><b>تفعيل الدفع عن طريق InstaPay</b></label>
+</div>
+<label>رقم/يوزر InstaPay (اللي هيظهر للعميل عشان يحول عليه)</label>
+<input id="instapayNumber" placeholder="مثال: 01012345678 أو @yourusername" style="direction:ltr;text-align:left">
 
 <hr>
 <h4>7. سياسة الشحن</h4>
@@ -431,13 +438,13 @@
   <button class="btn small green" style="margin:10px 0; min-width:80px" onclick="addPhone()">+ إضافة</button>
 </div>
 
-<label style="margin-top:16px;display:block">روابط السوشيال ميديا</label>
-<div id="socialsList"></div>
-<div class="responsive-row" style="display:flex; gap:8px">
-  <input id="newSocialLabel" placeholder="اسم المنصة (فيسبوك، انستجرام...)" style="flex:1">
-  <input id="newSocialUrl" placeholder="الرابط بالكامل https://..." style="flex:1">
-  <button class="btn small green" style="margin:10px 0; min-width:80px" onclick="addSocial()">+ إضافة</button>
-</div>
+<label style="margin-top:16px;display:block">روابط السوشيال ميديا (هتظهر كأيقونات تحت المنتجات في كل صفحات المتجر، وكمان في صفحة "من نحن")</label>
+<label>رابط الفيسبوك</label>
+<input id="fbUrl" placeholder="https://facebook.com/yourpage" style="direction:ltr;text-align:left">
+<label>رابط الانستجرام</label>
+<input id="instaUrl" placeholder="https://instagram.com/yourpage" style="direction:ltr;text-align:left">
+<label>رابط التيك توك</label>
+<input id="tiktokUrl" placeholder="https://tiktok.com/@yourpage" style="direction:ltr;text-align:left">
 
       <button class="btn green" onclick="saveS()" data-key="save_changes">حفظ التغييرات</button>
     </div>
