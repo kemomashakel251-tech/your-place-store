@@ -415,6 +415,30 @@
 <h4>9. صفحة الشكر بعد إتمام الطلب</h4>
 <label>النص اللي هيظهر للعميل بعد ما يخلص الطلب (سيبه فاضي عشان يستخدم النص الافتراضي)</label>
 <textarea id="thankYouMsg" placeholder="مثال: شكراً لطلبك! هيتم التواصل معاك خلال 24 ساعة لتأكيد الطلب." rows="4"></textarea>
+
+<hr>
+<h4>10. صفحة "من نحن" (بيانات التواصل)</h4>
+<p style="color:var(--muted);font-size:13px;margin-top:-4px">هتظهر للعميل كصفحة مستقلة فيها نبذة عن متجرك، أرقام تليفوناتك، وروابط السوشيال ميديا بتاعتك.</p>
+
+<label>نبذة عن المتجر</label>
+<textarea id="aboutText" placeholder="مثال: احنا متجر متخصص في... بنوفرلك توصيل سريع وجودة عالية..." rows="5"></textarea>
+
+<label style="margin-top:16px;display:block">أرقام التليفونات</label>
+<div id="phonesList"></div>
+<div class="responsive-row" style="display:flex; gap:8px">
+  <input id="newPhoneLabel" placeholder="مسمى (مثلاً: خدمة العملاء)" style="flex:1">
+  <input id="newPhoneNum" placeholder="رقم التليفون" inputmode="tel" style="flex:1">
+  <button class="btn small green" style="margin:10px 0; min-width:80px" onclick="addPhone()">+ إضافة</button>
+</div>
+
+<label style="margin-top:16px;display:block">روابط السوشيال ميديا</label>
+<div id="socialsList"></div>
+<div class="responsive-row" style="display:flex; gap:8px">
+  <input id="newSocialLabel" placeholder="اسم المنصة (فيسبوك، انستجرام...)" style="flex:1">
+  <input id="newSocialUrl" placeholder="الرابط بالكامل https://..." style="flex:1">
+  <button class="btn small green" style="margin:10px 0; min-width:80px" onclick="addSocial()">+ إضافة</button>
+</div>
+
       <button class="btn green" onclick="saveS()" data-key="save_changes">حفظ التغييرات</button>
     </div>
   </div>

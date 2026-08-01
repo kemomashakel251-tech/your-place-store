@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlTag">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>من نحن - yourplace_مكانك</title>
+<meta name="description" content="تواصل معنا: أرقام التليفونات وروابط السوشيال ميديا الخاصة بمتجرنا">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toast"></div>
+<a id="waFloat" class="float" target="_blank">💬</a>
+
+<button id="botFloat" class="bot-float" onclick="toggleBotPanel()" title="مساعد المتجر">🤖<span class="bot-badge" id="botBadge"></span></button>
+<div class="bot-panel" id="botPanel">
+  <div class="bot-header">
+    <b>🤖 مساعد <span id="botStoreName">المتجر</span></b>
+    <button class="btn small gray" style="margin:0;padding:4px 10px" onclick="toggleBotPanel()">X</button>
+  </div>
+  <div class="bot-messages" id="botMessages"></div>
+  <div class="bot-quick" id="botQuick"></div>
+  <div class="bot-input-row">
+    <input id="botInput" placeholder="اكتب سؤالك..." onkeydown="if(event.key==='Enter')sendBotMsg()">
+    <button class="btn small" onclick="sendBotMsg()">إرسال</button>
+  </div>
+</div>
+
+<div id="shipPolicyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:22px;max-width:500px;width:100%;max-height:80vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">📦 سياسة الشحن</h3>
+      <button class="btn small gray" onclick="hideShipPolicy()">X</button>
+    </div>
+    <div id="shipPolicyText" style="white-space:pre-line;line-height:1.8;color:#333"></div>
+  </div>
+</div>
+
+<header>
+  <div class="container" style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0">
+    <a href="index.html" style="text-decoration:none;color:inherit"><h2 id="sName">yourplace_مكانك</h2></a>
+    <nav>
+      <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
+      <a href="index.html"><span data-key="nav_store">المتجر</span></a>
+      <a href="about.html">ℹ️ <span data-key="nav_about">من نحن</span></a>
+      <a id="navShipPolicy" onclick="showShipPolicy()" style="cursor:pointer;display:none">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
+      <a onclick="cartToggle()" style="cursor:pointer"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <div class="box" style="max-width:650px; margin:0 auto">
+    <h3 style="text-align:center; margin-top:0">من نحن</h3>
+    <div id="aboutTextBox" style="font-size:17px; line-height:1.9; color:#333; white-space:pre-line; text-align:center; margin-bottom:10px"></div>
+
+    <div id="aboutPhonesSection" style="display:none">
+      <hr>
+      <h4 style="margin-bottom:10px">📞 أرقامنا</h4>
+      <div id="aboutPhonesList" style="display:flex; flex-direction:column; gap:10px"></div>
+    </div>
+
+    <div id="aboutSocialsSection" style="display:none">
+      <hr>
+      <h4 style="margin-bottom:10px">🔗 تابعنا على</h4>
+      <div id="aboutSocialsList" style="display:flex; flex-direction:column; gap:10px"></div>
+    </div>
+
+    <div id="aboutEmptyMsg" style="display:none; text-align:center; color:var(--muted); padding:20px 0">
+      لسه مفيش بيانات تواصل مضافة.
+    </div>
+  </div>
+</div>
+
+<div id="cart">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h4 style="margin:0" data-key="nav_cart">سلة المشتريات</h4>
+    <button class="btn small gray" onclick="cartToggle()">X</button>
+  </div>
+  <div id="cItems">فاضية</div>
+  <hr>
+  <p style="font-size:16px"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
+  <button class="btn" onclick="goToCheckout()" data-key="checkout_title">اتمام الطلب</button>
+</div>
+
+<script src="shared.js"></script>
+<script>
+// بيخمن إيموجي مناسب لاسم المنصة عشان القائمة تبقى شكلها لطيف من غير ما
+// نحتاج نضيف حقل إيموجي منفصل في لوحة التحكم لكل رابط.
+function guessSocialIcon(label, url){
+  let t = (label + ' ' + url).toLowerCase();
+  if(t.includes('facebook') || t.includes('فيسبوك') || t.includes('فيس بوك')) return '📘';
+  if(t.includes('instagram') || t.includes('انستجرام') || t.includes('انستقرام')) return '📸';
+  if(t.includes('tiktok') || t.includes('تيك توك')) return '🎵';
+  if(t.includes('whatsapp') || t.includes('واتساب') || t.includes('واتس')) return '💬';
+  if(t.includes('youtube') || t.includes('يوتيوب')) return '▶️';
+  if(t.includes('twitter') || t.includes('x.com') || t.includes('تويتر')) return '✖️';
+  if(t.includes('snapchat') || t.includes('سناب')) return '👻';
+  if(t.includes('telegram') || t.includes('تليجرام')) return '✈️';
+  return '🔗';
+}
+
+function renderAboutPage(){
+  document.getElementById('aboutTextBox').innerText = SET.aboutText && SET.aboutText.trim()
+    ? SET.aboutText
+    : '';
+
+  let phones = SET.phones || [];
+  let phonesSection = document.getElementById('aboutPhonesSection');
+  if(phones.length){
+    phonesSection.style.display = 'block';
+    document.getElementById('aboutPhonesList').innerHTML = phones.map(p => `
+      <a href="tel:${esc(p.num)}" style="display:flex;align-items:center;gap:10px;background:#f7f8fa;padding:12px 14px;border-radius:12px;text-decoration:none;color:var(--text);font-weight:600">
+        <span style="font-size:20px">📞</span>
+        <span style="flex:1">${esc(p.label)}</span>
+        <span style="direction:ltr;color:var(--main)">${esc(p.num)}</span>
+      </a>`).join('');
+  } else {
+    phonesSection.style.display = 'none';
+  }
+
+  let socials = SET.socials || [];
+  let socialsSection = document.getElementById('aboutSocialsSection');
+  if(socials.length){
+    socialsSection.style.display = 'block';
+    document.getElementById('aboutSocialsList').innerHTML = socials.map(s => `
+      <a href="${esc(s.url)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;background:#f7f8fa;padding:12px 14px;border-radius:12px;text-decoration:none;color:var(--text);font-weight:600">
+        <span style="font-size:20px">${guessSocialIcon(s.label, s.url)}</span>
+        <span style="flex:1">${esc(s.label)}</span>
+        <span style="color:var(--main)">فتح ←</span>
+      </a>`).join('');
+  } else {
+    socialsSection.style.display = 'none';
+  }
+
+  document.getElementById('aboutEmptyMsg').style.display =
+    (!SET.aboutText && !phones.length && !socials.length) ? 'block' : 'none';
+}
+
+window.onSettingsLoaded = function(){ renderAboutPage(); };
+window.onProductsLoaded = function(){};
+window.onLangChange = function(){};
+window.onCartChange = function(){};
+
+updateCartBadge();
+renderCartDrawer();
+updateLangDOM();
+initApp();
+</script>
+</body>
+</html>

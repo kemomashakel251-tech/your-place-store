@@ -81,6 +81,12 @@ function drawS(){
 
   thankYouMsg.value=SET.thankYouMsg||'';
 
+  aboutText.value=SET.aboutText||'';
+  SET.phones = SET.phones || [];
+  SET.socials = SET.socials || [];
+  drawPhonesList();
+  drawSocialsList();
+
   TMP_LOGO_IMG = null;
   drawLogoPreview();
 
@@ -88,6 +94,45 @@ function drawS(){
 }
 
 function addG(){SET.gov.push({n:'Gov',v:50});drawS()}
+
+function drawPhonesList(){
+  let box = document.getElementById('phonesList');
+  if(!SET.phones.length){ box.innerHTML = '<p style="color:var(--muted);font-size:13px">مفيش أرقام مضافة لسه</p>'; return; }
+  box.innerHTML = SET.phones.map((p,i) => `
+    <div class="gov">
+      <input value="${p.label}" oninput="SET.phones[${i}].label=this.value" placeholder="مسمى">
+      <input value="${p.num}" oninput="SET.phones[${i}].num=this.value" placeholder="رقم" inputmode="tel">
+      <button class="btn red" onclick="SET.phones.splice(${i},1);drawPhonesList()">X</button>
+    </div>`).join('');
+}
+function addPhone(){
+  let labelEl = document.getElementById('newPhoneLabel'), numEl = document.getElementById('newPhoneNum');
+  let label = labelEl.value.trim(), num = numEl.value.trim();
+  if(!num) return toast('اكتب رقم التليفون الأول');
+  SET.phones.push({label: label || 'تليفون', num});
+  labelEl.value=''; numEl.value='';
+  drawPhonesList();
+}
+
+function drawSocialsList(){
+  let box = document.getElementById('socialsList');
+  if(!SET.socials.length){ box.innerHTML = '<p style="color:var(--muted);font-size:13px">مفيش روابط مضافة لسه</p>'; return; }
+  box.innerHTML = SET.socials.map((s,i) => `
+    <div class="gov">
+      <input value="${s.label}" oninput="SET.socials[${i}].label=this.value" placeholder="اسم المنصة">
+      <input value="${s.url}" oninput="SET.socials[${i}].url=this.value" placeholder="الرابط" style="direction:ltr;text-align:left">
+      <button class="btn red" onclick="SET.socials.splice(${i},1);drawSocialsList()">X</button>
+    </div>`).join('');
+}
+function addSocial(){
+  let labelEl = document.getElementById('newSocialLabel'), urlEl = document.getElementById('newSocialUrl');
+  let label = labelEl.value.trim(), url = urlEl.value.trim();
+  if(!label || !url) return toast('اكتب اسم المنصة والرابط');
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  SET.socials.push({label, url});
+  labelEl.value=''; urlEl.value='';
+  drawSocialsList();
+}
 
 async function saveS(){
   SET.name=stName.value;SET.wa=stWa.value;SET.theme=stColor.value;SET.cpOn=cpOn.checked;SET.cpCode=cpCode.value;SET.cpVal=+cpVal.value||0;
@@ -112,6 +157,8 @@ async function saveS(){
   SET.altPhoneOn=altPhoneOn.checked;
 
   SET.thankYouMsg=thankYouMsg.value;
+
+  SET.aboutText=aboutText.value;
 
   if(TMP_LOGO_IMG !== null) SET.logoImg = TMP_LOGO_IMG;
   
