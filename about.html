@@ -84,31 +84,7 @@
 
 <script src="shared.js"></script>
 <script>
-function renderAboutPage(){
-  document.getElementById('aboutTextBox').innerText = SET.aboutText && SET.aboutText.trim()
-    ? SET.aboutText
-    : '';
-
-  let phones = SET.phones || [];
-  let phonesSection = document.getElementById('aboutPhonesSection');
-  if(phones.length){
-    phonesSection.style.display = 'block';
-    document.getElementById('aboutPhonesList').innerHTML = phones.map(p => `
-      <a href="tel:${esc(p.num)}" style="display:flex;align-items:center;gap:10px;background:#f7f8fa;padding:12px 14px;border-radius:12px;text-decoration:none;color:var(--text);font-weight:600">
-        <span style="font-size:20px">📞</span>
-        <span style="flex:1">${esc(p.label)}</span>
-        <span style="direction:ltr;color:var(--main)">${esc(p.num)}</span>
-      </a>`).join('');
-  } else {
-    phonesSection.style.display = 'none';
-  }
-
-  let hasSocials = !!(SET.fbUrl || SET.instaUrl || SET.tiktokUrl);
-  document.getElementById('aboutEmptyMsg').style.display =
-    (!SET.aboutText && !phones.length && !hasSocials) ? 'block' : 'none';
-}
-
-window.onSettingsLoaded = function(){ renderAboutPage(); };
+window.onSettingsLoaded = function(){ renderAboutInfo('about'); };
 window.onProductsLoaded = function(){};
 window.onLangChange = function(){};
 window.onCartChange = function(){};

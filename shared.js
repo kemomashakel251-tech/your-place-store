@@ -86,6 +86,43 @@ function renderSocialIconsBar(){
   bar.innerHTML = icons.length ? `<div class="social-icons-bar">${icons.join('')}</div>` : '';
 }
 
+// بتتحط جوه أي صفحة عندها عناصر بالاسماء دي: <prefix>TextBox، <prefix>PhonesSection،
+// <prefix>PhonesList، وممكن كمان <prefix>Section (حاوية خارجية تتخفي بالكامل لو
+// مفيش بيانات) أو <prefix>EmptyMsg (رسالة "لسه مفيش بيانات"). بنستخدمها مرتين:
+// مرة بـ prefix='storeAbout' تحت المنتجات في الصفحة الرئيسية، ومرة بـ
+// prefix='about' في صفحة "من نحن" المستقلة — نفس البيانات، مكانين مختلفين.
+function renderAboutInfo(prefix){
+  let textBox = document.getElementById(prefix+'TextBox');
+  let phonesSection = document.getElementById(prefix+'PhonesSection');
+  let phonesList = document.getElementById(prefix+'PhonesList');
+  let emptyMsg = document.getElementById(prefix+'EmptyMsg');
+  let wrapper = document.getElementById(prefix+'Section');
+  if(!textBox && !phonesSection && !wrapper) return;
+
+  let hasText = !!(SET.aboutText && SET.aboutText.trim());
+  if(textBox) textBox.innerText = hasText ? SET.aboutText : '';
+
+  let phones = SET.phones || [];
+  if(phonesSection){
+    if(phones.length){
+      phonesSection.style.display = 'block';
+      if(phonesList) phonesList.innerHTML = phones.map(p => `
+        <a href="tel:${esc(p.num)}" style="display:flex;align-items:center;gap:10px;background:#f7f8fa;padding:12px 14px;border-radius:12px;text-decoration:none;color:var(--text);font-weight:600">
+          <span style="font-size:20px">📞</span>
+          <span style="flex:1">${esc(p.label)}</span>
+          <span style="direction:ltr;color:var(--main)">${esc(p.num)}</span>
+        </a>`).join('');
+    } else {
+      phonesSection.style.display = 'none';
+    }
+  }
+
+  let hasSocials = !!(SET.fbUrl || SET.instaUrl || SET.tiktokUrl);
+  let hasAnything = hasText || phones.length || hasSocials;
+  if(wrapper) wrapper.style.display = hasAnything ? 'block' : 'none';
+  if(emptyMsg) emptyMsg.style.display = hasAnything ? 'none' : 'block';
+}
+
 function updateLangDOM(){
   let h = document.getElementById('htmlTag');
   if(h){
@@ -275,6 +312,9 @@ const BOT_QUICK_REPLIES = [
   {label:'📦 سياسة الشحن', text:'ايه سياسة الشحن والاسترجاع؟'},
   {label:'🚚 مصاريف الشحن', text:'الشحن بكام؟'},
   {label:'💳 طرق الدفع', text:'ايه طرق الدفع المتاحة؟'},
+  {label:'🛍️ ازاي اطلب؟', text:'ازاي اطلب من المتجر؟'},
+  {label:'ℹ️ من نحن', text:'من نحن؟ احكيلي عن المتجر'},
+  {label:'📱 السوشيال ميديا', text:'ايه روابط السوشيال ميديا بتاعتكم؟'},
   {label:'📞 كلمونا', text:'عايز اتواصل مع خدمة العملاء'}
 ];
 
@@ -319,7 +359,7 @@ function toggleBotPanel(){
     if(badge) badge.style.display = 'none';
     renderBotQuick();
     if(BOT_MSGS.length === 0){
-      addBotMessage('bot', `أهلاً بيك في ${SET.name || 'متجرنا'} 👋 تقدر تسألني عن المنتجات، العروض، الشحن، أو أي حاجة جديدة في المتجر.`);
+      addBotMessage('bot', `أهلاً بيك في ${SET.name || 'متجرنا'} 👋 تقدر تسألني عن المنتجات، العروض، الشحن، طرق الدفع، من نحن، أو أي حاجة تانية في المتجر.`);
     } else {
       renderBotMessages();
     }
@@ -346,6 +386,23 @@ function botReply(text){
   if(/شكرا|متشكر|thanks|تسلم/.test(t)){
     return 'العفو 🌸 تحت أمرك في أي وقت.';
   }
+  if(/من نحن|مين انتوا|مين انتو|عن المتجر|تعرفنا|احكيلي عن/.test(t)){
+    if(SET.aboutText && SET.aboutText.trim()) return 'ℹ️ ' + SET.aboutText;
+    return `احنا ${SET.name || 'متجر إلكتروني'}، تقدر تعرف أكتر عننا من صفحة "من نحن" فوق.`;
+  }
+  if(/ارقامكم|ارقام التواصل|رقم تليفون|رقم موبايل|رقم للتواصل|اتصل بيكم|اكلمكم ازاي/.test(t)){
+    if(SET.phones && SET.phones.length) return '📞 أرقامنا:\n' + SET.phones.map(p=>`• ${p.label}: ${p.num}`).join('\n');
+    if(SET.wa) return `تقدر تكلمنا على الواتساب على الرقم ${SET.wa}.`;
+    return 'تقدر تلاقي بيانات التواصل بتاعتنا في صفحة "من نحن".';
+  }
+  if(/فيسبوك|انستجرام|انستقرام|instagram|facebook|تيك توك|tiktok|سوشيال ميديا|سوشيال|فولو|تابعو/.test(t)){
+    let links = [];
+    if(SET.fbUrl) links.push('• فيسبوك: ' + SET.fbUrl);
+    if(SET.instaUrl) links.push('• انستجرام: ' + SET.instaUrl);
+    if(SET.tiktokUrl) links.push('• تيك توك: ' + SET.tiktokUrl);
+    if(links.length) return '📱 تابعنا على:\n' + links.join('\n');
+    return 'لسه مفيش روابط سوشيال ميديا مضافة، تقدر تلاقي كل بيانات التواصل في صفحة "من نحن".';
+  }
   if(/سياسة الشحن|سياسه الشحن|استرجاع|ارجاع|استبدال/.test(t)){
     if(SET.shippingPolicyOn && SET.shippingPolicyText) return '📦 سياسة الشحن:\n' + SET.shippingPolicyText;
     return 'لسه مفيش سياسة شحن مفصّلة متاحة دلوقتي، تقدر تتواصل معانا عشان أي استفسار.';
@@ -359,7 +416,7 @@ function botReply(text){
     if(SET.categories && SET.categories.length) return 'أقسام المتجر:\n' + SET.categories.map(c=>`• ${c}`).join('\n');
     return 'المنتجات عندنا معروضة كلها في صفحة المتجر الرئيسية.';
   }
-  if(/عرض|خصم|كوبون|تخفيض/.test(t)){
+  if(/عرض|خصم كوبون|كوبون|تخفيض/.test(t)){
     let parts = [];
     if(SET.cpOn && SET.cpCode) parts.push(`فيه كود خصم شغال دلوقتي: ${SET.cpCode} (خصم ${SET.cpVal || ''}%)، جربه في صفحة الدفع.`);
     let discounted = PROD.filter(p => p.disc && p.disc < p.v).slice(0,3);
@@ -367,15 +424,41 @@ function botReply(text){
     if(SET.countDownOn && SET.countDownText) parts.push(`⏰ ${SET.countDownText}`);
     return parts.length? parts.join('\n\n') : 'مفيش عروض خاصة دلوقتي، لكن تابعنا عشان تعرف أول بأول.';
   }
+  if(/خصم الكمية|شراء بالجملة|بالجمله|اشتري كذا قطعة/.test(t)){
+    let bulkProducts = PROD.filter(p => p.bulk_on).slice(0,3);
+    if(bulkProducts.length) return '🔥 عندنا خصم كمية على منتجات معينة:\n' + bulkProducts.map(p=>`• ${p.n}: اشتري ${p.bulk_qty} قطع ووفر ${p.bulk_disc}%`).join('\n');
+    return 'مفيش خصم كمية متاح دلوقتي على منتجات معينة، لكن تابع صفحة المتجر لآخر تحديث.';
+  }
+  if(/اقصى كمية|الحد الاقصى|اكبر كمية اطلبها/.test(t)){
+    return 'الحد الأقصى للكمية بيختلف من منتج للتاني، هتلاقيه موضّح في صفحة المنتج نفسه.';
+  }
+  if(/هوصل امتى|مدة التوصيل|معاد التوصيل|هياخد قد ايه|كام يوم التوصيل/.test(t)){
+    return 'مدة التوصيل بتختلف حسب المحافظة، وهتلاقي تفاصيلها في سياسة الشحن أو تقدر تسألنا مباشرة على الواتساب.';
+  }
   if(/شحن|توصيل|تشحن/.test(t)){
     let parts = [];
     if(SET.gov && SET.gov.length) parts.push('أسعار الشحن حسب المحافظة:\n' + SET.gov.map(g=>`• ${g.n}: ${g.v} ${i18n[LANG].currency}`).join('\n'));
     if(SET.shippingPolicyOn && SET.shippingPolicyText) parts.push('📦 سياسة الشحن:\n' + SET.shippingPolicyText);
     return parts.length ? parts.join('\n\n') : 'التوصيل متاح لكل المحافظات، هيتقالك السعر بالظبط في صفحة الدفع.';
   }
-  if(/فودافون|كاش|دفع/.test(t)){
-    if(SET.vodafoneOn && SET.vodafoneNumber) return `الدفع متاح عن طريق فودافون كاش على الرقم ${SET.vodafoneNumber}، أو الدفع عند الاستلام.`;
-    return 'الدفع متاح عند استلام الأوردر.';
+  if(/انستاباي|instapay/.test(t)){
+    if(SET.instapayOn && SET.instapayNumber) return `الدفع متاح عن طريق InstaPay على: ${SET.instapayNumber}، وترفع صورة التحويل وقت إتمام الطلب.`;
+    return 'الدفع بـ InstaPay مش متاح دلوقتي، بس تقدر تدفع عند الاستلام أو بالطرق التانية المتاحة في صفحة الدفع.';
+  }
+  if(/فودافون|كاش|طرق الدفع|طريقة الدفع|ادفع ازاي/.test(t)){
+    let ways = ['الدفع عند الاستلام (كاش)'];
+    if(SET.vodafoneOn && SET.vodafoneNumber) ways.push(`فودافون كاش على الرقم ${SET.vodafoneNumber}`);
+    if(SET.instapayOn && SET.instapayNumber) ways.push(`InstaPay على ${SET.instapayNumber}`);
+    return '💳 طرق الدفع المتاحة:\n' + ways.map(w=>'• '+w).join('\n');
+  }
+  if(/ازاي اطلب|طريقة الطلب|كيف اطلب|خطوات الطلب/.test(t)){
+    return '🛍️ اطلب بسهولة في 3 خطوات:\n1) اختار المنتج وحدد المقاس/اللون لو موجود واضغط "اضف للسلة"\n2) افتح السلة واضغط "اتمام الطلب"\n3) اكتب بياناتك وأكّد الطلب — وهيتم التواصل معاك لتأكيده.';
+  }
+  if(/الغاء الطلب|الغي طلبي|عايز الغي/.test(t)){
+    return 'تقدر تلغي طلبك بالتواصل معانا في أقرب وقت على الواتساب قبل ما يتم شحنه.';
+  }
+  if(/ضمان|المنتج فيه عيب|وصلني تالف|منتج معيب/.test(t)){
+    return 'لو وصلك منتج فيه أي مشكلة، كلمنا فورًا على الواتساب وهنحل المشكلة معاك.';
   }
   if(/طلبي|اوردر|فين طلبي|حالة الطلب/.test(t)){
     return 'تقدر تتابع حالة طلبك بسهولة عن طريق التواصل معانا على الواتساب وذكر اسمك ورقم الموبايل اللي طلبت بيه.';
@@ -383,7 +466,7 @@ function botReply(text){
   if(/مقاس|مقاسات|لون|الوان/.test(t)){
     return 'المقاسات والألوان المتاحة لكل منتج موجودة جوه صفحة المنتج نفسه.';
   }
-  if(/واتساب|تواصل|اتصال|رقم التليفون/.test(t)){
+  if(/واتساب|تواصل|اتصال/.test(t)){
     return 'تقدر تتواصل معانا مباشرة من زرار الواتساب الأخضر 💬 تحت.';
   }
   let matchedProduct = PROD.find(p => p.n && t.includes(p.n.toLowerCase()));
@@ -392,12 +475,12 @@ function botReply(text){
     let stockText = matchedProduct.stock > 0 ? 'متوفر' : 'غير متوفر حالياً';
     return `${matchedProduct.n}: ${price} ${i18n[LANG].currency} - ${stockText}`;
   }
-  return 'تقدر تسألني عن: المنتجات الجديدة، الأقسام، العروض، سياسة الشحن، أو طرق الدفع. أو كلمنا على الواتساب لو محتاج مساعدة شخص حقيقي 💬';
+  return 'تقدر تسألني عن: المنتجات الجديدة، الأقسام، العروض، سياسة الشحن، طرق الدفع، من نحن، أرقامنا، أو السوشيال ميديا بتاعتنا. أو كلمنا على الواتساب لو محتاج مساعدة شخص حقيقي 💬';
 }
 
 function checkStoreUpdates(){
   let seenRaw = localStorage.botSeenSettings;
-  let current = {cpOn:!!SET.cpOn, cpCode:SET.cpCode||'', shippingPolicyOn:!!SET.shippingPolicyOn, countDownOn:!!SET.countDownOn, countDownText:SET.countDownText||'', vodafoneOn:!!SET.vodafoneOn};
+  let current = {cpOn:!!SET.cpOn, cpCode:SET.cpCode||'', shippingPolicyOn:!!SET.shippingPolicyOn, countDownOn:!!SET.countDownOn, countDownText:SET.countDownText||'', vodafoneOn:!!SET.vodafoneOn, instapayOn:!!SET.instapayOn};
   if(seenRaw === undefined){ localStorage.botSeenSettings = JSON.stringify(current); return; }
   let seen = JSON.parse(seenRaw || '{}');
   let msgs = [];
@@ -405,6 +488,7 @@ function checkStoreUpdates(){
   if(current.shippingPolicyOn && !seen.shippingPolicyOn) msgs.push('📦 تمت إضافة سياسة شحن جديدة، اسألني عنها لو حابب.');
   if(current.countDownOn && (!seen.countDownOn || seen.countDownText !== current.countDownText) && current.countDownText) msgs.push(`⏰ عرض جديد: ${current.countDownText}`);
   if(current.vodafoneOn && !seen.vodafoneOn) msgs.push('💜 بقى متاح الدفع بفودافون كاش دلوقتي.');
+  if(current.instapayOn && !seen.instapayOn) msgs.push('🅿️ بقى متاح الدفع بـ InstaPay دلوقتي.');
   msgs.forEach(m => addBotMessage('bot', m));
   localStorage.botSeenSettings = JSON.stringify(current);
 }
@@ -481,6 +565,8 @@ function initApp(){
       updateLangDOM();
       checkStoreUpdates();
       renderSocialIconsBar();
+      renderAboutInfo('storeAbout');
+      renderAboutInfo('about');
 
       let shipBtn = document.getElementById('navShipPolicy');
       if(shipBtn) shipBtn.style.display = SET.shippingPolicyOn ? 'inline-flex' : 'none';
