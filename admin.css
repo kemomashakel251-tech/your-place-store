@@ -32,7 +32,6 @@ body[dir="ltr"] #cart { left: auto; right: 20px; }
 
 /* ============== استجابة الأدمن لكل المقاسات (موبايل/تابلت) ============== */
 @media(max-width:768px){
-  header .container{flex-wrap:wrap; gap:10px}
   #menu{
     width:100%;
     display:flex;
