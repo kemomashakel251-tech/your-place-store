@@ -33,14 +33,9 @@ body[dir="ltr"] #cart { left: auto; right: 20px; }
 /* ============== استجابة الأدمن لكل المقاسات (موبايل/تابلت) ============== */
 @media(max-width:768px){
   #menu{
-    width:100%;
     display:flex;
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
+    flex:0 0 auto;
     gap:6px;
-    padding-bottom:4px;
-    scrollbar-width:thin;
   }
   #menu a{white-space:nowrap; flex:0 0 auto; padding:8px 12px; font-size:13px}
 

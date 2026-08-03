@@ -85,18 +85,35 @@
       <button class="btn gray" style="width:auto" onclick="applyCoupon()" data-key="apply_btn">تطبيق</button>
     </div>
     <div id="sum"></div>
-    <button type="button" id="shipPolicyBtn" class="btn gray" style="display:none;background:#eef3ff" onclick="showShipPolicy()">📦 سياسة الشحن</button>
+    <div id="paymentMethodSection" style="display:none; margin:14px 0">
+      <label style="display:block; margin-bottom:6px">طريقة الدفع</label>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer; background:#f7f8fa; padding:10px 14px; border-radius:10px">
+          <input type="radio" name="payMethod" value="cod" checked onchange="onPayMethodChange()" style="width:auto; margin:0"> الدفع عند الاستلام (كاش)
+        </label>
+        <label id="payMethodVodafoneLabel" style="display:none; align-items:center; gap:8px; font-weight:600; cursor:pointer; background:#fff3cd; padding:10px 14px; border-radius:10px">
+          <input type="radio" name="payMethod" value="vodafone" onchange="onPayMethodChange()" style="width:auto; margin:0"> 💜 فودافون كاش
+        </label>
+        <label id="payMethodInstapayLabel" style="display:none; align-items:center; gap:8px; font-weight:600; cursor:pointer; background:#e7f1ff; padding:10px 14px; border-radius:10px">
+          <input type="radio" name="payMethod" value="instapay" onchange="onPayMethodChange()" style="width:auto; margin:0"> 🅿️ InstaPay
+        </label>
+      </div>
+    </div>
     <div id="vodafoneBox" style="display:none; background:#fff3cd; border:1px solid #ffe69c; border-radius:12px; padding:16px; margin:14px 0;">
       <h4 style="margin:0 0 8px;color:#856404">💜 الدفع عن طريق فودافون كاش</h4>
       <p style="margin:0 0 10px">حوّل قيمة الطلب على الرقم: <b id="vfNumberDisplay" style="font-size:18px;color:var(--main)"></b></p>
-      <label>ارفق صورة (اسكرين شوت) من التحويل (اختياري)</label>
+      <label>الرقم اللي هتحول منه (مطلوب)</label>
+      <input id="vfSenderNumber" placeholder="مثال: 01012345678" inputmode="tel">
+      <label>ارفق صورة (اسكرين شوت) من التحويل (مطلوب)</label>
       <input id="vfScreenshot" type="file" accept="image/*">
       <div id="vfPreview" style="margin-top:8px"></div>
     </div>
     <div id="instapayBox" style="display:none; background:#e7f1ff; border:1px solid #b6d4fe; border-radius:12px; padding:16px; margin:14px 0;">
       <h4 style="margin:0 0 8px;color:#0d47a1">🅿️ الدفع عن طريق InstaPay</h4>
       <p style="margin:0 0 10px">حوّل قيمة الطلب على: <b id="instaNumberDisplay" style="font-size:18px;color:var(--main)"></b></p>
-      <label>ارفق صورة (اسكرين شوت) من التحويل (اختياري)</label>
+      <label>الرقم/اليوزر اللي هتحول منه (مطلوب)</label>
+      <input id="instaSenderNumber" placeholder="مثال: 01012345678 أو @yourusername">
+      <label>ارفق صورة (اسكرين شوت) من التحويل (مطلوب)</label>
       <input id="instaScreenshot" type="file" accept="image/*">
       <div id="instaPreview" style="margin-top:8px"></div>
     </div>
@@ -202,6 +219,19 @@ async function finish(){
   if(!ca.value) return toast('من فضلك اكتب العنوان');
   if(!cg.value) return toast('من فضلك اختار المحافظة');
 
+  let selectedPayEl = document.querySelector('input[name="payMethod"]:checked');
+  let payMethod = selectedPayEl ? selectedPayEl.value : 'cod';
+  let vfSenderNumber = '', instaSenderNumber = '';
+  if(payMethod === 'vodafone'){
+    vfSenderNumber = document.getElementById('vfSenderNumber').value.trim();
+    if(!vfSenderNumber) return toast('من فضلك اكتب رقم الموبايل اللي حوّلت منه');
+    if(!VF_SCREENSHOT) return toast('من فضلك ارفق صورة (اسكرين شوت) من التحويل');
+  } else if(payMethod === 'instapay'){
+    instaSenderNumber = document.getElementById('instaSenderNumber').value.trim();
+    if(!instaSenderNumber) return toast('من فضلك اكتب الرقم/اليوزر اللي حوّلت منه');
+    if(!INSTA_SCREENSHOT) return toast('من فضلك ارفق صورة (اسكرين شوت) من التحويل');
+  }
+
   let btn = document.querySelector('button.btn.green');
   if(btn){ btn.disabled=true; btn.innerText='جاري الإرسال...'; }
 
@@ -253,12 +283,22 @@ async function finish(){
     }
 
     let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
-    let payments = [];
-    if(SET.vodafoneOn && VF_SCREENSHOT) payments.push({method:'vodafone', label:'فودافون كاش', screenshot:VF_SCREENSHOT});
-    if(SET.instapayOn && INSTA_SCREENSHOT) payments.push({method:'instapay', label:'InstaPay', screenshot:INSTA_SCREENSHOT});
-    if(payments.length) newOrder.payments = payments;
+
+    let noteParts = [];
     let custNoteVal = (document.getElementById('custNote').value || '').trim();
-    if(custNoteVal) newOrder.note = custNoteVal;
+    if(custNoteVal) noteParts.push(custNoteVal);
+
+    let payments = [];
+    if(payMethod === 'vodafone'){
+      payments.push({method:'vodafone', label:'فودافون كاش', screenshot:VF_SCREENSHOT});
+      noteParts.push(`رقم التحويل (فودافون كاش): ${vfSenderNumber}`);
+    } else if(payMethod === 'instapay'){
+      payments.push({method:'instapay', label:'InstaPay', screenshot:INSTA_SCREENSHOT});
+      noteParts.push(`رقم التحويل (InstaPay): ${instaSenderNumber}`);
+    }
+    if(payments.length) newOrder.payments = payments;
+    if(noteParts.length) newOrder.note = noteParts.join(' | ');
+
     if(typeof fbq !== 'undefined' && SET.fbPixelId){ fbq('track','Purchase',{value:LAST.tot,currency:'EGP'}); }
     if(typeof TMTK !== 'undefined' && SET.tiktokPixelId){ TMTK.push(['track','CompletePayment',{value:LAST.tot,currency:'EGP'}]); }
 
@@ -398,32 +438,49 @@ function renderCheckout(){
   cg.onchange=calc;
   COUPON=0; document.getElementById('coupon').value=''; document.getElementById('cpBox').style.display=SET.cpOn?'flex':'none'; calc();
 
-  document.getElementById('shipPolicyBtn').style.display = (SET.shippingPolicyOn && SET.shippingPolicyText) ? 'block' : 'none';
   document.getElementById('cp2').style.display = SET.altPhoneOn ? 'block' : 'none';
 
+  let hasOnlinePay = !!((SET.vodafoneOn && SET.vodafoneNumber) || (SET.instapayOn && SET.instapayNumber));
+  document.getElementById('paymentMethodSection').style.display = hasOnlinePay ? 'block' : 'none';
+  document.querySelectorAll('input[name="payMethod"]').forEach(r => r.checked = (r.value === 'cod'));
+
   VF_SCREENSHOT = null;
-  let vfBox = document.getElementById('vodafoneBox');
+  document.getElementById('vfPreview').innerHTML = '';
+  document.getElementById('vfScreenshot').value = '';
+  document.getElementById('vfSenderNumber').value = '';
+  let vfLabel = document.getElementById('payMethodVodafoneLabel');
   if(SET.vodafoneOn && SET.vodafoneNumber){
-    vfBox.style.display='block';
+    vfLabel.style.display = 'flex';
     document.getElementById('vfNumberDisplay').innerText = SET.vodafoneNumber;
-    document.getElementById('vfPreview').innerHTML='';
-    document.getElementById('vfScreenshot').value='';
   } else {
-    vfBox.style.display='none';
+    vfLabel.style.display = 'none';
   }
 
   INSTA_SCREENSHOT = null;
-  let instaBox = document.getElementById('instapayBox');
+  document.getElementById('instaPreview').innerHTML = '';
+  document.getElementById('instaScreenshot').value = '';
+  document.getElementById('instaSenderNumber').value = '';
+  let instaLabel = document.getElementById('payMethodInstapayLabel');
   if(SET.instapayOn && SET.instapayNumber){
-    instaBox.style.display='block';
+    instaLabel.style.display = 'flex';
     document.getElementById('instaNumberDisplay').innerText = SET.instapayNumber;
-    document.getElementById('instaPreview').innerHTML='';
-    document.getElementById('instaScreenshot').value='';
   } else {
-    instaBox.style.display='none';
+    instaLabel.style.display = 'none';
   }
 
+  onPayMethodChange();
+
   if(SET.countDownOn) { startDynamicTimer('chkHours', 'chkMins', 'chkSecs'); }
+}
+
+// بتظهر بوكس فودافون كاش أو InstaPay بس لو العميل اختار طريقة الدفع دي فعلاً
+// (مش بس لأنها مفعّلة في الإعدادات)، عشان محدش يرفع سكرين شوت وهو ناوي يدفع
+// كاش عادي.
+function onPayMethodChange(){
+  let selected = document.querySelector('input[name="payMethod"]:checked');
+  let method = selected ? selected.value : 'cod';
+  document.getElementById('vodafoneBox').style.display = (method === 'vodafone') ? 'block' : 'none';
+  document.getElementById('instapayBox').style.display = (method === 'instapay') ? 'block' : 'none';
 }
 
 window.updateCheckoutQty = function(id, d) {
