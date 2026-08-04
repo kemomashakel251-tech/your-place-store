@@ -9,7 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -54,16 +55,6 @@
   </div>
 </div>
 
-<div id="shipPolicyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;padding:22px;max-width:500px;width:100%;max-height:80vh;overflow:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <h3 style="margin:0">📦 سياسة الشحن</h3>
-      <button class="btn small gray" onclick="hideShipPolicy()">X</button>
-    </div>
-    <div id="shipPolicyText" style="white-space:pre-line;line-height:1.8;color:#333"></div>
-  </div>
-</div>
-
 <header>
   <div class="container header-inner">
     <a href="index.html" style="text-decoration:none;color:inherit"><h2 id="sName">yourplace_مكانك</h2></a>
@@ -71,8 +62,8 @@
       <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
       <a href="index.html"><span data-key="nav_store">المتجر</span></a>
       <a href="about.html">ℹ️ <span data-key="nav_about">من نحن</span></a>
-      <a id="navShipPolicy" onclick="showShipPolicy()" style="cursor:pointer;display:none">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
-      <a onclick="cartToggle()" style="cursor:pointer"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
+      <a id="navShipPolicy" href="shipping-policy.html" style="display:none">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
+      <a href="cart.html"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
     </nav>
   </div>
 </header>
@@ -93,17 +84,6 @@
 </div>
 
 <div id="socialIconsBar"></div>
-
-<div id="cart">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h4 style="margin:0" data-key="nav_cart">سلة المشتريات</h4>
-    <button class="btn small gray" onclick="cartToggle()">X</button>
-  </div>
-  <div id="cItems">فاضية</div>
-  <hr>
-  <p style="font-size:16px"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
-  <button class="btn" onclick="goToCheckout()" data-key="checkout_title">اتمام الطلب</button>
-</div>
 
 <script src="shared.js"></script>
 <script>

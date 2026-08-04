@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>من نحن - yourplace_مكانك</title>
-<meta name="description" content="تواصل معنا: أرقام التليفونات وروابط السوشيال ميديا الخاصة بمتجرنا">
+<title>سياسة الشحن - yourplace_مكانك</title>
+<meta name="description" content="سياسة الشحن والاسترجاع الخاصة بمتجرنا">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@
       <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
       <a href="index.html"><span data-key="nav_store">المتجر</span></a>
       <a href="about.html">ℹ️ <span data-key="nav_about">من نحن</span></a>
-      <a id="navShipPolicy" href="shipping-policy.html" style="display:none">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
+      <a href="shipping-policy.html">📦 <span data-key="nav_ship_policy">سياسة الشحن</span></a>
       <a href="cart.html"><span data-key="nav_cart">السلة</span> 🛒 <b class="cart-badge">0</b></a>
     </nav>
   </div>
@@ -46,33 +46,30 @@
 
 <div class="container">
   <div class="box" style="max-width:650px; margin:0 auto">
-    <h3 style="text-align:center; margin-top:0">من نحن</h3>
-    <div id="aboutTextBox" style="font-size:17px; line-height:1.9; color:#333; white-space:pre-line; text-align:center; margin-bottom:10px"></div>
-
-    <div id="aboutPhonesSection" style="display:none">
-      <hr>
-      <h4 style="margin-bottom:10px">📞 أرقامنا</h4>
-      <div id="aboutPhonesList" style="display:flex; flex-direction:column; gap:10px"></div>
-    </div>
-
-    <div id="aboutEmptyMsg" style="display:none; text-align:center; color:var(--muted); padding:20px 0">
-      لسه مفيش بيانات تواصل مضافة.
+    <h3 style="text-align:center; margin-top:0">📦 سياسة الشحن</h3>
+    <div id="shipPolicyText" style="white-space:pre-line; line-height:1.9; color:#333; font-size:17px"></div>
+    <div id="shipPolicyEmptyMsg" style="display:none; text-align:center; color:var(--muted); padding:20px 0">
+      لسه مفيش سياسة شحن مضافة.
     </div>
   </div>
 </div>
 
-<div style="text-align:center; color:var(--muted); font-size:14px; margin-top:-10px">تابعنا على</div>
 <div id="socialIconsBar"></div>
 
 <script src="shared.js"></script>
 <script>
-window.onSettingsLoaded = function(){ renderAboutInfo('about'); };
+function renderShippingPolicyPage(){
+  let hasPolicy = !!(SET.shippingPolicyText && SET.shippingPolicyText.trim());
+  document.getElementById('shipPolicyText').innerText = hasPolicy ? SET.shippingPolicyText : '';
+  document.getElementById('shipPolicyEmptyMsg').style.display = hasPolicy ? 'none' : 'block';
+}
+
+window.onSettingsLoaded = function(){ renderShippingPolicyPage(); };
 window.onProductsLoaded = function(){};
 window.onLangChange = function(){};
 window.onCartChange = function(){};
 
 updateCartBadge();
-renderCartDrawer();
 updateLangDOM();
 initApp();
 </script>

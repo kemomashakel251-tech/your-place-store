@@ -8,7 +8,10 @@
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -50,16 +53,6 @@
   <div class="bot-input-row">
     <input id="botInput" placeholder="اكتب سؤالك..." onkeydown="if(event.key==='Enter')sendBotMsg()">
     <button class="btn small" onclick="sendBotMsg()">إرسال</button>
-  </div>
-</div>
-
-<div id="shipPolicyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;padding:22px;max-width:500px;width:100%;max-height:80vh;overflow:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <h3 style="margin:0">📦 سياسة الشحن</h3>
-      <button class="btn small gray" onclick="hideShipPolicy()">X</button>
-    </div>
-    <div id="shipPolicyText" style="white-space:pre-line;line-height:1.8;color:#333"></div>
   </div>
 </div>
 
@@ -124,27 +117,7 @@
   </div>
 </div>
 
-<div id="thankYouOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;padding:32px 22px;max-width:480px;width:100%;text-align:center">
-    <div style="font-size:52px;margin-bottom:10px">✅</div>
-    <h3 style="margin:0 0 14px">تم استلام طلبك بنجاح!</h3>
-    <div id="thankYouText" style="white-space:pre-line;line-height:1.8;color:#333;margin-bottom:22px"></div>
-    <a href="index.html" class="btn">الرجوع للمتجر</a>
-  </div>
-</div>
-
 <div id="socialIconsBar"></div>
-
-<div id="cart">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h4 style="margin:0" data-key="nav_cart">سلة المشتريات</h4>
-    <button class="btn small gray" onclick="cartToggle()">X</button>
-  </div>
-  <div id="cItems">فاضية</div>
-  <hr>
-  <p style="font-size:16px"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
-  <button class="btn" onclick="cartToggle()" data-key="checkout_title">اتمام الطلب</button>
-</div>
 
 <script src="shared.js"></script>
 <script>
@@ -304,10 +277,7 @@ async function finish(){
 
     await window.saveOrderToCloud(newOrder);
     CART={};CHK_OPTS={};COUPON=0;VF_SCREENSHOT=null;INSTA_SCREENSHOT=null;saveCart();
-    document.getElementById('thankYouText').innerText = (SET.thankYouMsg && SET.thankYouMsg.trim())
-      ? SET.thankYouMsg
-      : 'شكراً لطلبك! هيتم التواصل معاك قريبًا لتأكيد الطلب.';
-    document.getElementById('thankYouOverlay').style.display = 'flex';
+    window.location.href = 'thank-you.html';
   } catch(e) {
     console.error('Order error:', e);
     toast('خطأ: ' + (e.message || e.code || e));

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>من نحن - yourplace_مكانك</title>
-<meta name="description" content="تواصل معنا: أرقام التليفونات وروابط السوشيال ميديا الخاصة بمتجرنا">
+<title>سلة المشتريات - yourplace_مكانك</title>
+<meta name="description" content="سلة المشتريات الخاصة بك">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -46,30 +46,23 @@
 
 <div class="container">
   <div class="box" style="max-width:650px; margin:0 auto">
-    <h3 style="text-align:center; margin-top:0">من نحن</h3>
-    <div id="aboutTextBox" style="font-size:17px; line-height:1.9; color:#333; white-space:pre-line; text-align:center; margin-bottom:10px"></div>
-
-    <div id="aboutPhonesSection" style="display:none">
-      <hr>
-      <h4 style="margin-bottom:10px">📞 أرقامنا</h4>
-      <div id="aboutPhonesList" style="display:flex; flex-direction:column; gap:10px"></div>
-    </div>
-
-    <div id="aboutEmptyMsg" style="display:none; text-align:center; color:var(--muted); padding:20px 0">
-      لسه مفيش بيانات تواصل مضافة.
-    </div>
+    <h3 style="text-align:center; margin-top:0" data-key="nav_cart">سلة المشتريات</h3>
+    <div id="cItems">فاضية</div>
+    <hr>
+    <p style="font-size:16px; text-align:center"><span data-key="count_lbl">العدد</span>: <b class="cart-badge">0</b></p>
+    <button class="btn" onclick="goToCheckout()" data-key="checkout_title">اتمام الطلب</button>
+    <a href="index.html" class="btn gray" style="margin-top:8px">متابعة التسوق</a>
   </div>
 </div>
 
-<div style="text-align:center; color:var(--muted); font-size:14px; margin-top:-10px">تابعنا على</div>
 <div id="socialIconsBar"></div>
 
 <script src="shared.js"></script>
 <script>
-window.onSettingsLoaded = function(){ renderAboutInfo('about'); };
-window.onProductsLoaded = function(){};
-window.onLangChange = function(){};
-window.onCartChange = function(){};
+window.onSettingsLoaded = function(){};
+window.onProductsLoaded = function(){ renderCartDrawer(); };
+window.onLangChange = function(){ renderCartDrawer(); };
+window.onCartChange = function(){ renderCartDrawer(); };
 
 updateCartBadge();
 renderCartDrawer();
