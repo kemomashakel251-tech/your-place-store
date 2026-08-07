@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin.css">
 
@@ -109,7 +109,7 @@
   </div>
 
   <div id="store" class="page">
-    <div id="storeCatBar" style="display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;"></div>
+    <div id="storeCatBar" class="store-cat-bar"></div>
     <div id="grid" class="products"></div>
   </div>
 
@@ -316,11 +316,14 @@
       
       <hr>
       <h4>إدارة أقسام المتجر</h4>
+      <p style="color:var(--muted);font-size:13px;margin-top:-4px">صورة القسم اختيارية وبتظهر كدايرة فوق اسم القسم في المتجر — شكل أشيك زي أقسام انستجرام.</p>
       <div class="responsive-row" style="display:flex; gap:8px;">
         <input id="newCatName" placeholder="اسم القسم الجديد (مثلاً: أحذية)">
         <input id="newCatId" placeholder="معرف القسم بالإنجليزية (مثلاً: shoes)">
-        <button class="btn small green" style="margin:10px 0; min-width:80px;" onclick="addCategory()">+ إضافة</button>
       </div>
+      <label>صورة القسم (اختياري)</label>
+      <input id="newCatImg" type="file" accept="image/*">
+      <button class="btn small green" style="margin:10px 0; min-width:80px;" onclick="addCategory()">+ إضافة</button>
       <div id="categoriesManagementList" style="margin-top:10px;"></div>
 
       <hr>
@@ -526,13 +529,13 @@
 </div>
 
 
-<script src="admin-core.js"></script>
-<script src="admin-store-preview.js"></script>
-<script src="admin-products.js"></script>
-<script src="admin-suppliers.js"></script>
-<script src="admin-orders.js"></script>
-<script src="admin-dashboard.js"></script>
-<script src="admin-settings.js"></script>
-<script src="admin-init.js"></script>
+<script src="admin-core.js" defer></script>
+<script src="admin-store-preview.js" defer></script>
+<script src="admin-products.js" defer></script>
+<script src="admin-suppliers.js" defer></script>
+<script src="admin-orders.js" defer></script>
+<script src="admin-dashboard.js" defer></script>
+<script src="admin-settings.js" defer></script>
+<script src="admin-init.js" defer></script>
 </body>
 </html>

@@ -93,6 +93,14 @@ function esc(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function safeImg(url){
+  let fallback = 'https://via.placeholder.com/200';
+  if(!url || typeof url !== 'string') return fallback;
+  let trimmed = url.trim();
+  if(!/^https?:\/\/[^\s"'<>]+$/i.test(trimmed)) return fallback;
+  return esc(trimmed);
+}
+
 // بيقارن إجمالي الطلب (o.tot) اللي بعته العميل بالسعر الحقيقي المحسوب من
 // بيانات المنتجات الحالية في PROD، عشان يكشف أي تلاعب في السعر قبل ما
 // الأدمن يأكد/يشحن الطلب (الـ Firestore rules مش بتتحقق من tot بالكامل).
@@ -374,7 +382,7 @@ function getPrice(p, qty=1){
 
 function filterCat(catName, btnElement) {
   currentFilter = catName;
-  btnElement.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btnElement.parentElement.querySelectorAll('.cat-circle-btn').forEach(b => b.classList.remove('active'));
   btnElement.classList.add('active');
   drawStore();
 }
@@ -492,6 +500,32 @@ function checkDeepLinks() {
   }
 }
 
+// بتضغط أي صورة مرفوعة وترجعها كـ data URL صغير (نفس الأسلوب المستخدم في
+// شعار المتجر وصور المنتجات) — بنستخدمها هنا لصور الأقسام.
+function compressImageFile(file, maxSize){
+  return new Promise((resolve, reject) => {
+    let reader = new FileReader();
+    reader.onload = function(ev){
+      let img = new Image();
+      img.onload = function(){
+        let canvas = document.createElement('canvas');
+        let width = img.width, height = img.height;
+        if(width > height){ if(width > maxSize){ height *= maxSize/width; width = maxSize; } }
+        else { if(height > maxSize){ width *= maxSize/height; height = maxSize; } }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        let dataUrl = canvas.toDataURL('image/webp', 0.85);
+        if(!dataUrl.startsWith('data:image/webp')) dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function renderCategoriesDOM() {
   if(!SET.categories) SET.categories = [{"id":"all","n":"الكل"}];
   
@@ -499,7 +533,13 @@ function renderCategoriesDOM() {
   if(storeBar) {
     storeBar.innerHTML = SET.categories.map(c => {
       let activeClass = currentFilter === c.id ? 'active' : '';
-      return `<button class="opt-btn ${activeClass}" onclick="filterCat('${c.id}', this)">${c.n}</button>`;
+      let inner = c.img
+        ? `<img src="${c.img}" alt="${c.n}">`
+        : `<span class="cat-circle-fallback">${(c.n||'?').trim().charAt(0)}</span>`;
+      return `<button type="button" class="cat-circle-btn ${activeClass}" onclick="filterCat('${c.id}', this)">
+        <span class="cat-circle">${inner}</span>
+        <span class="cat-circle-label">${c.n}</span>
+      </button>`;
     }).join('');
   }
 
@@ -514,6 +554,7 @@ function renderCategoriesDOM() {
 async function addCategory() {
   let nameIn = document.getElementById('newCatName');
   let idIn = document.getElementById('newCatId');
+  let imgIn = document.getElementById('newCatImg');
   let name = nameIn.value.trim();
   let id = idIn.value.trim().toLowerCase();
 
@@ -521,8 +562,14 @@ async function addCategory() {
   if(id === 'all') return toast('لا يمكن استخدام المعرف all');
   if(SET.categories.some(c => c.id === id)) return toast('هذا المعرف موجود بالفعل');
 
-  SET.categories.push({id: id, n: name});
-  nameIn.value = ''; idIn.value = '';
+  let img = '';
+  if(imgIn && imgIn.files[0]){
+    try{ img = await compressImageFile(imgIn.files[0], 200); }
+    catch(e){ console.error(e); }
+  }
+
+  SET.categories.push({id: id, n: name, img: img});
+  nameIn.value = ''; idIn.value = ''; if(imgIn) imgIn.value = '';
   
   renderCategoriesDOM();
   drawCategorySettingsList();
@@ -530,6 +577,22 @@ async function addCategory() {
   
   if(db) await setDoc(doc(db, "settings", "main"), SET);
   toast('تم إضافة القسم بنجاح');
+}
+
+async function updateCategoryImage(id, input){
+  let file = input.files[0];
+  if(!file) return;
+  try{
+    let img = await compressImageFile(file, 200);
+    let cat = SET.categories.find(c => c.id === id);
+    if(!cat) return;
+    cat.img = img;
+    renderCategoriesDOM();
+    drawCategorySettingsList();
+    saveAll();
+    if(db) await setDoc(doc(db, "settings", "main"), SET);
+    toast('تم تحديث صورة القسم');
+  }catch(e){ console.error(e); toast('حصل خطأ أثناء رفع الصورة'); }
 }
 
 async function deleteCategory(id) {
@@ -551,9 +614,18 @@ function drawCategorySettingsList() {
   let container = document.getElementById('categoriesManagementList');
   if(!container) return;
   container.innerHTML = SET.categories.map(c => `
-    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; margin:4px 0; border-radius:8px;">
-      <span><b>${c.n}</b> (${c.id})</span>
-      ${c.id !== 'all' ? `<button class="btn small red" style="margin:0" onclick="deleteCategory('${c.id}')">حذف</button>` : '<small style="color:#999">أساسي</small>'}
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; background:#f8f9fa; padding:8px 12px; margin:4px 0; border-radius:8px; flex-wrap:wrap">
+      <div style="display:flex; align-items:center; gap:10px">
+        <img src="${c.img || 'https://via.placeholder.com/60'}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid #ddd;background:#fff">
+        <span><b>${c.n}</b> (${c.id})</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px">
+        <label class="btn small gray" style="margin:0;cursor:pointer">
+          تغيير الصورة
+          <input type="file" accept="image/*" style="display:none" onchange="updateCategoryImage('${c.id}', this)">
+        </label>
+        ${c.id !== 'all' ? `<button class="btn small red" style="margin:0" onclick="deleteCategory('${c.id}')">حذف</button>` : '<small style="color:#999">أساسي</small>'}
+      </div>
     </div>
   `).join('');
 }

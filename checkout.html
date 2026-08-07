@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -122,39 +122,9 @@
 <script src="shared.js"></script>
 <script>
 let LAST={};
-let CHK_OPTS={};
 let COUPON=0;
 let VF_SCREENSHOT = null;
 let INSTA_SCREENSHOT = null;
-
-function setDist(id,type,key,val){
-  let opt = CHK_OPTS[id]; let totalQty = CART[id]; val = +val || 0; opt[type][key] = val;
-  let sum = Object.values(opt[type]).reduce((a,b)=>a+b,0);
-
-  if(sum > totalQty){
-      toast('المجموع ماينفعش يزيد عن '+totalQty);
-      opt[type][key] = totalQty - (sum - val);
-      val = opt[type][key];
-      sum = totalQty;
-      let currentInput = document.querySelector(`#${type}-${id} input[oninput*="'${key}'"]`);
-      if(currentInput) currentInput.value = val;
-  }
-
-  let container = document.getElementById(type + '-' + id);
-  if(container) {
-      container.querySelectorAll('input').forEach(input => {
-        let inputVal = +input.value || 0;
-        if (sum >= totalQty && inputVal === 0) {
-          input.disabled = true;
-          input.style.backgroundColor = "#e9ecef";
-        } else {
-          input.disabled = false;
-          input.style.backgroundColor = "#fff";
-        }
-      });
-  }
-  calc();
-}
 
 function calc(){
   let sub=0, bulkSave=0;
@@ -213,13 +183,19 @@ async function finish(){
     for(let id in CART){
       let p=PROD.find(x=>x.id==id);
       if(!p){ toast('منتج في السلة غير موجود، أعد المحاولة'); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
-      let opt=CHK_OPTS[id]; let price = getPrice(p, CART[id]);
+      let opt = CHK_OPTS[id];
+      if(!opt) opt = CHK_OPTS[id] = {q:CART[id], sizes:{}, colors:{}, custom:{}};
+      if(!opt.custom) opt.custom = {};
+      let price = getPrice(p, CART[id]);
+      // لو لأي سبب توزيع المقاس/اللون مش مطابق للكمية (مثلاً منتج اتضاف من
+      // غير اختيار صريح)، بنرجّع تلقائي لأول قيمة متاحة بدل ما نوقف الطلب —
+      // مفيش واجهة للعميل يصلح بيها التوزيع يدوي في صفحة الدفع دلوقتي.
       let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
       let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
-      let customSum = Object.values(opt.custom||{}).reduce((a,b)=>a+b,0);
-      if(p.sz && p.sz.length && sizeSum != CART[id]) { toast(`مجموع المقاسات لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
-      if(p.cl && p.cl.length && colorSum != CART[id]) { toast(`مجموع الالوان لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
-      if(p.customVariants && p.customVariants.length && customSum != CART[id]) { toast(`مجموع ${p.customVariants[0].name} لازم يساوي ${CART[id]} للمنتج ${p.n}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
+      let customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
+      if(sizeSum !== CART[id] && p.sz && p.sz.length) opt.sizes = {[p.sz[0]]: CART[id]};
+      if(colorSum !== CART[id] && p.cl && p.cl.length) opt.colors = {[p.cl[0]]: CART[id]};
+      if(customSum !== CART[id] && p.customVariants && p.customVariants.length) opt.custom = {[p.customVariants[0].name]: CART[id]};
       if(CART[id]>p.stock){ toast(`${i18n[LANG].max_stock} ${p.stock}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
       items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors,custom:opt.custom||{}});
 
@@ -345,47 +321,27 @@ function renderCheckout(){
     if(!CHK_OPTS[id].custom) CHK_OPTS[id].custom = {};
     let opt = CHK_OPTS[id]; let totalQty = CART[id]; let price = getPrice(p, totalQty);
 
+    // لو التوزيع فاضي (منتج اتضاف قديم من غير اختيار)، بنرجّعه تلقائي لأول
+    // خيار متاح — مفيش واجهة تعديل هنا، الاختيار بيتم من صفحة المنتج.
     let sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
     let colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
     let customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
     if(sizeSum==0 && p.sz && p.sz.length) opt.sizes[p.sz[0]] = totalQty;
     if(colorSum==0 && p.cl && p.cl.length) opt.colors[p.cl[0]] = totalQty;
     if(customSum==0 && p.customVariants && p.customVariants.length) opt.custom[p.customVariants[0].name] = totalQty;
-    sizeSum = Object.values(opt.sizes).reduce((a,b)=>a+b,0);
-    colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
-    customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
 
-    let sizeHtml = p.sz && p.sz.length? `<div id="sizes-${id}" style="margin-top:10px;"><b>المقاسات:</b><br>`+ p.sz.map(s=>{
-      let val = opt.sizes[s]||0; let isDisabled = (sizeSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(s)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','sizes','${esc(s)}',this.value)"></div>`
-    }).join('')+`</div>` : '';
-
-    let colorHtml = p.cl && p.cl.length? `<div id="colors-${id}" style="margin-top:10px;"><b>الألوان:</b><br>`+ p.cl.map(c=>{
-      let val = opt.colors[c]||0; let isDisabled = (colorSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(c)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','colors','${esc(c)}',this.value)"></div>`
-    }).join('')+`</div>` : '';
-
-    let customHtml = p.customVariants && p.customVariants.length? `<div id="custom-${id}" style="margin-top:10px;">`+ p.customVariants.map(cv=>{
-      let val = opt.custom[cv.name]||0; let isDisabled = (customSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
-      return `<div><b>${esc(cv.name)}:</b><br><div style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','custom','${esc(cv.name)}',this.value)"></div></div>`
-    }).join('')+`</div>` : '';
-
-    let descriptionHtml = p.d ? `<p style="color:var(--muted); font-size:14px; margin: 8px 0; white-space: pre-line;">${esc(p.d)}</p>` : '';
-
-    let checkMediaList = p.media && p.media.length ? p.media : [{type:'image', src:'https://via.placeholder.com/200'}];
-    let checkMediaHtml = checkMediaList.length > 1
-      ? `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px">${checkMediaList.map(m => m.type==='video'
-          ? `<video src="${m.src}" muted controls style="width:90px;height:90px;object-fit:cover;border-radius:10px;flex:0 0 auto"></video>`
-          : `<img src="${m.src}" style="width:90px;height:90px;object-fit:cover;border-radius:10px;flex:0 0 auto">`).join('')}</div>`
-      : (checkMediaList[0].type==='video'
-          ? `<video src="${checkMediaList[0].src}" controls muted></video>`
-          : `<img src="${checkMediaList[0].src}">`);
+    let selectionParts = [];
+    if(Object.keys(opt.colors).length) selectionParts.push('اللون: ' + Object.keys(opt.colors).map(k=>esc(k)).join('، '));
+    if(Object.keys(opt.sizes).length) selectionParts.push('المقاس: ' + Object.keys(opt.sizes).map(k=>esc(k)).join('، '));
+    if(Object.keys(opt.custom).length) selectionParts.push(Object.keys(opt.custom).map(k=>esc(k)).join('، '));
+    let selectionHtml = selectionParts.length ? `<p style="color:var(--muted); font-size:14px; margin:4px 0 0">${selectionParts.join(' - ')}</p>` : '';
 
     return `<div class="check-prod" id="chk${id}">
       <div style="display:flex; gap:12px; align-items:center;">
         <img src="${p.media && p.media[0]? p.media[0].src : 'https://via.placeholder.com/200'}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
         <div>
           <h3 style="margin:0 0 4px 0;">${esc(p.n)}</h3>
+          ${selectionHtml}
           <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
             <h4 style="margin:0; color:var(--muted)">الكمية:</h4>
             <button class="btn small gray" style="margin:0; padding:4px 10px;" onclick="updateCheckoutQty('${id}', -1)">-</button>
@@ -394,11 +350,6 @@ function renderCheckout(){
           </div>
         </div>
       </div>
-      ${checkMediaHtml}
-      ${descriptionHtml}
-      ${sizeHtml}
-      ${colorHtml}
-      ${customHtml}
       <h3 style="color:var(--main); margin-top:12px;">السعر: ${price*totalQty} جنيه</h3>
     </div>`
   }).join('');
@@ -469,7 +420,13 @@ window.updateCheckoutQty = function(id, d) {
     if (newQ > max) return toast(`اقصى عدد من ${p.n} هو ${max} قطعة`);
     if (newQ > p.stock) return toast(`المخزون الكلي المتاح فقط: ${p.stock}`);
     CART[id] = newQ;
-    if(CHK_OPTS[id]) CHK_OPTS[id].q = newQ;
+    if(CHK_OPTS[id]){
+      CHK_OPTS[id].q = newQ;
+      ['sizes','colors','custom'].forEach(type => {
+        let keys = Object.keys(CHK_OPTS[id][type] || {});
+        if(keys.length === 1){ CHK_OPTS[id][type][keys[0]] = newQ; }
+      });
+    }
     saveCart(); updateCartBadge();
     renderCheckout();
 }

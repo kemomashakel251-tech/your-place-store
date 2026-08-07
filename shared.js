@@ -18,6 +18,10 @@ try{
 }catch(e){}
 let currentFilter = 'all';
 let CART = JSON.parse(localStorage.getItem('cart') || '{}');
+// CHK_OPTS[id] = {q, sizes:{name:qty}, colors:{name:qty}, custom:{name:qty}} — بيتحدد
+// من صفحة المنتج وقت "أضف للسلة"/"اطلب الآن"، وبيفضل زي ما هو لحد صفحة الدفع
+// لأنه global ومحفوظ في localStorage زي CART بالظبط.
+let CHK_OPTS = JSON.parse(localStorage.getItem('chkOpts') || '{}');
 let LANG = localStorage.lang || 'ar';
 let timerIntervalGlobal = null;
 let db;
@@ -158,12 +162,12 @@ function getPrice(p, qty=1){
 }
 
 // ---------------- Cart (persisted across pages via localStorage) ----------------
-function saveCart(){ localStorage.setItem('cart', JSON.stringify(CART)); }
+function saveCart(){ localStorage.setItem('cart', JSON.stringify(CART)); localStorage.setItem('chkOpts', JSON.stringify(CHK_OPTS)); }
 
 function cleanCart(){
   let changed = false;
   Object.keys(CART).forEach(id => {
-    if(!PROD.find(p => p.id == id)){ delete CART[id]; changed = true; }
+    if(!PROD.find(p => p.id == id)){ delete CART[id]; delete CHK_OPTS[id]; changed = true; }
   });
   if(changed) saveCart();
 }
@@ -193,6 +197,34 @@ function renderCartDrawer(){
     </div>`}).join('')||`<p style="text-align:center;color:var(--muted)">${i18n[LANG].empty_cart}</p>`;
 }
 
+// بتضيف اختيار محدد (لون/مقاس/كمية) للسلة، بتستخدمها صفحة المنتج لما العميل
+// يختار اللون والمقاس قبل ما يضيف للسلة أو يطلب مباشرة. بترجع true/false
+// عشان الصفحة اللي بتناديها تعرف تكمل (مثلاً تنقل لصفحة الدفع) ولا لأ.
+function addToCartWithOptions(id, qty, color, size, custom){
+  let p = PROD.find(x => x.id == id);
+  if(!p){ toast('المنتج مش موجود'); return false; }
+  if(p.stock <= 0){ toast('خلص من المخزون'); return false; }
+  qty = Math.max(1, +qty || 1);
+  let max = p.maxQty || 999;
+  let existing = CART[id] || 0;
+  if(existing + qty > max){ toast(`اقصى عدد من ${p.n} هو ${max} قطعة`); return false; }
+  if(existing + qty > p.stock){ toast(`المخزون المتاح فقط: ${p.stock}`); return false; }
+
+  CART[id] = existing + qty;
+  if(!CHK_OPTS[id]) CHK_OPTS[id] = {q:0, sizes:{}, colors:{}, custom:{}};
+  let opt = CHK_OPTS[id];
+  opt.q = CART[id];
+  if(color) opt.colors[color] = (opt.colors[color] || 0) + qty;
+  if(size) opt.sizes[size] = (opt.sizes[size] || 0) + qty;
+  if(custom) Object.keys(custom).forEach(k => { opt.custom[k] = (opt.custom[k] || 0) + qty; });
+
+  saveCart();
+  updateCartBadge();
+  renderCartDrawer();
+  if(typeof onCartChange === 'function') onCartChange();
+  return true;
+}
+
 function cartToggle(){
   let c = document.getElementById('cart');
   if(!c) return;
@@ -217,6 +249,7 @@ function addC(id){
 
 function delC(id){
   delete CART[id];
+  delete CHK_OPTS[id];
   saveCart(); updateCartBadge(); renderCartDrawer();
   if(typeof onCartChange === 'function') onCartChange();
 }
@@ -230,6 +263,13 @@ function chgQty(id,d){
   if(newQ > max) return toast(`اقصى عدد من ${p.n} هو ${max} قطعة`);
   if(newQ>p.stock)return toast(`${i18n[LANG].max_stock}: ${p.stock}`);
   CART[id]=newQ;
+  if(CHK_OPTS[id]){
+    CHK_OPTS[id].q = newQ;
+    ['sizes','colors','custom'].forEach(type => {
+      let keys = Object.keys(CHK_OPTS[id][type] || {});
+      if(keys.length === 1){ CHK_OPTS[id][type][keys[0]] = newQ; }
+    });
+  }
   saveCart(); updateCartBadge(); renderCartDrawer();
   if(typeof onCartChange === 'function') onCartChange();
 }
@@ -246,16 +286,29 @@ function renderCategoriesDOM() {
   if(storeBar) {
     storeBar.innerHTML = SET.categories.map(c => {
       let activeClass = currentFilter === c.id ? 'active' : '';
-      return `<button class="opt-btn ${activeClass}" onclick="filterCat('${c.id}', this)">${c.n}</button>`;
+      let inner = c.img
+        ? `<img src="${esc(c.img)}" alt="${esc(c.n)}">`
+        : `<span class="cat-circle-fallback">${esc((c.n||'?').trim().charAt(0))}</span>`;
+      return `<button type="button" class="cat-circle-btn ${activeClass}" onclick="filterCat('${c.id}', this)">
+        <span class="cat-circle">${inner}</span>
+        <span class="cat-circle-label">${esc(c.n)}</span>
+      </button>`;
     }).join('');
   }
 }
 
 function filterCat(catName, btnElement) {
   currentFilter = catName;
-  btnElement.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
-  btnElement.classList.add('active');
-  if(typeof drawStore === 'function') drawStore();
+  if(typeof drawStore === 'function'){
+    btnElement.parentElement.querySelectorAll('.cat-circle-btn').forEach(b => b.classList.remove('active'));
+    btnElement.classList.add('active');
+    drawStore();
+  } else {
+    // الصفحة دي (زي صفحة المنتج) مالهاش شبكة منتجات تتفلتر فيها مباشرة، فبنسجل
+    // القسم المطلوب ونرجع للمتجر الرئيسي وهو مفلتر عليه أوتوماتيك.
+    localStorage.setItem('pendingCatFilter', catName);
+    window.location.href = 'index.html';
+  }
 }
 
 // ---------------- Countdown timer ----------------
