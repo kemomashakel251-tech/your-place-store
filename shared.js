@@ -130,7 +130,7 @@ function updateLangDOM(){
     h.setAttribute('dir', LANG === 'ar' ? 'rtl' : 'ltr');
   }
   let langBtn = document.getElementById('langBtn');
-  if(langBtn) langBtn.innerText = LANG === 'ar' ? 'EN' : 'AR';
+  if(langBtn) langBtn.innerText = '🌐';
 
   document.querySelectorAll('[data-key]').forEach(el => {
     let key = el.getAttribute('data-key');
@@ -246,14 +246,18 @@ function renderCategoriesDOM() {
   if(storeBar) {
     storeBar.innerHTML = SET.categories.map(c => {
       let activeClass = currentFilter === c.id ? 'active' : '';
-      return `<button class="opt-btn ${activeClass}" onclick="filterCat('${c.id}', this)">${c.n}</button>`;
+      let imgHtml = c.img ? `<img src="${c.img}" alt="${esc(c.n)}">` : '🗂️';
+      return `<button class="cat-circle-item ${activeClass}" onclick="filterCat('${c.id}', this)">
+        <span class="cat-circle-img">${imgHtml}</span>
+        <span class="cat-circle-label">${esc(c.n)}</span>
+      </button>`;
     }).join('');
   }
 }
 
 function filterCat(catName, btnElement) {
   currentFilter = catName;
-  btnElement.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btnElement.parentElement.querySelectorAll('.cat-circle-item').forEach(b => b.classList.remove('active'));
   btnElement.classList.add('active');
   if(typeof drawStore === 'function') drawStore();
 }

@@ -70,7 +70,7 @@
   <div class="container header-inner">
     <h2 id="sName">yourplace_مكانك</h2>
     <nav class="store-nav">
-      <button class="btn small gray" onclick="toggleLang()" id="langBtn" style="margin:0; font-size:13px">EN</button>
+      <button class="btn small gray" onclick="toggleLang()" id="langBtn" title="تغيير اللغة" style="margin:0; font-size:16px; padding:8px 12px">🌐</button>
       <span id="menu" style="display:none; gap:8px">
         <a onclick="go('store')" data-key="nav_store">المتجر</a>
         <a onclick="go('products')" data-key="nav_products">المنتجات</a>
@@ -316,11 +316,17 @@
       
       <hr>
       <h4>إدارة أقسام المتجر</h4>
-      <div class="responsive-row" style="display:flex; gap:8px;">
-        <input id="newCatName" placeholder="اسم القسم الجديد (مثلاً: أحذية)">
-        <input id="newCatId" placeholder="معرف القسم بالإنجليزية (مثلاً: shoes)">
+      <div class="responsive-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+        <input id="newCatName" placeholder="اسم القسم الجديد (مثلاً: أحذية)" style="flex:1">
+        <input id="newCatId" placeholder="معرف القسم بالإنجليزية (مثلاً: shoes)" style="flex:1">
+        <label class="btn small gray" style="margin:10px 0; cursor:pointer">
+          🖼️ صورة القسم
+          <input id="newCatImgInput" type="file" accept="image/*" style="display:none" onchange="onNewCatImgChange(this)">
+        </label>
+        <div id="newCatImgPreview"></div>
         <button class="btn small green" style="margin:10px 0; min-width:80px;" onclick="addCategory()">+ إضافة</button>
       </div>
+      <p style="color:var(--muted);font-size:13px;margin-top:-4px">صورة القسم اختيارية — لو مفيش صورة هيظهر أيقونة افتراضية 🗂️. تقدر كمان تغيّر صورة أي قسم موجود بالضغط على دائرته في القائمة تحت.</p>
       <div id="categoriesManagementList" style="margin-top:10px;"></div>
 
       <hr>

@@ -59,7 +59,7 @@ function updateLangDOM(){
   let h = document.getElementById('htmlTag');
   h.setAttribute('lang', LANG);
   h.setAttribute('dir', LANG === 'ar' ? 'rtl' : 'ltr');
-  document.getElementById('langBtn').innerText = LANG === 'ar' ? 'EN' : 'AR';
+  document.getElementById('langBtn').innerText = '🌐';
   
   document.querySelectorAll('[data-key]').forEach(el => {
     let key = el.getAttribute('data-key');
@@ -382,7 +382,7 @@ function getPrice(p, qty=1){
 
 function filterCat(catName, btnElement) {
   currentFilter = catName;
-  btnElement.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btnElement.parentElement.querySelectorAll('.cat-circle-item').forEach(b => b.classList.remove('active'));
   btnElement.classList.add('active');
   drawStore();
 }
@@ -507,7 +507,11 @@ function renderCategoriesDOM() {
   if(storeBar) {
     storeBar.innerHTML = SET.categories.map(c => {
       let activeClass = currentFilter === c.id ? 'active' : '';
-      return `<button class="opt-btn ${activeClass}" onclick="filterCat('${c.id}', this)">${c.n}</button>`;
+      let imgHtml = c.img ? `<img src="${c.img}" alt="${esc(c.n)}">` : '🗂️';
+      return `<button class="cat-circle-item ${activeClass}" onclick="filterCat('${c.id}', this)">
+        <span class="cat-circle-img">${imgHtml}</span>
+        <span class="cat-circle-label">${esc(c.n)}</span>
+      </button>`;
     }).join('');
   }
 
@@ -517,6 +521,54 @@ function renderCategoriesDOM() {
       return `<option value="${c.id}">${c.n}</option>`;
     }).join('') + `<option value="all">عام</option>`;
   }
+}
+
+// ضغط صورة مرفوعة إلى dataURL صغير (نفس أسلوب شعار المتجر في admin-settings.js)
+// — مستخدمة هنا لصور دوائر الأقسام لأنها أيقونات صغيرة برضه.
+function compressImageToDataUrl(file, maxH, cb){
+  let reader = new FileReader();
+  reader.onload = function(ev){
+    let img = new Image();
+    img.onload = function(){
+      let canvas = document.createElement('canvas');
+      let width = img.width, height = img.height;
+      if(height > maxH){ width *= maxH / height; height = maxH; }
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      let dataUrl = canvas.toDataURL('image/webp', 0.9);
+      if(!dataUrl.startsWith('data:image/webp')) dataUrl = canvas.toDataURL('image/png');
+      cb(dataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+let TMP_NEW_CAT_IMG = '';
+function onNewCatImgChange(input){
+  let file = input.files[0];
+  if(!file) return;
+  compressImageToDataUrl(file, 160, function(dataUrl){
+    TMP_NEW_CAT_IMG = dataUrl;
+    let prev = document.getElementById('newCatImgPreview');
+    if(prev) prev.innerHTML = `<img src="${dataUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #ddd">`;
+  });
+}
+
+// بتحدّث صورة قسم موجود بالفعل فورًا (بدون داعي لضغط زر الحفظ العام)
+async function onCatImgChange(id, input){
+  let file = input.files[0];
+  if(!file) return;
+  compressImageToDataUrl(file, 160, async function(dataUrl){
+    let cat = SET.categories.find(c => c.id === id);
+    if(!cat) return;
+    cat.img = dataUrl;
+    renderCategoriesDOM();
+    drawCategorySettingsList();
+    saveAll();
+    if(db) await setDoc(doc(db, "settings", "main"), SET);
+    toast('تم تحديث صورة القسم');
+  });
 }
 
 async function addCategory() {
@@ -529,9 +581,14 @@ async function addCategory() {
   if(id === 'all') return toast('لا يمكن استخدام المعرف all');
   if(SET.categories.some(c => c.id === id)) return toast('هذا المعرف موجود بالفعل');
 
-  SET.categories.push({id: id, n: name});
+  SET.categories.push({id: id, n: name, img: TMP_NEW_CAT_IMG || ''});
   nameIn.value = ''; idIn.value = '';
-  
+  TMP_NEW_CAT_IMG = '';
+  let imgInput = document.getElementById('newCatImgInput');
+  if(imgInput) imgInput.value = '';
+  let prev = document.getElementById('newCatImgPreview');
+  if(prev) prev.innerHTML = '';
+
   renderCategoriesDOM();
   drawCategorySettingsList();
   saveAll();
@@ -559,8 +616,14 @@ function drawCategorySettingsList() {
   let container = document.getElementById('categoriesManagementList');
   if(!container) return;
   container.innerHTML = SET.categories.map(c => `
-    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; margin:4px 0; border-radius:8px;">
-      <span><b>${c.n}</b> (${c.id})</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; background:#f8f9fa; padding:8px 12px; margin:4px 0; border-radius:8px; flex-wrap:wrap">
+      <div style="display:flex; align-items:center; gap:10px">
+        <label style="cursor:pointer" title="اضغط لتغيير صورة القسم">
+          <span class="cat-circle-img" style="width:40px;height:40px;font-size:18px">${c.img ? `<img src="${c.img}">` : '🗂️'}</span>
+          <input type="file" accept="image/*" style="display:none" onchange="onCatImgChange('${c.id}', this)">
+        </label>
+        <span><b>${c.n}</b> (${c.id})</span>
+      </div>
       ${c.id !== 'all' ? `<button class="btn small red" style="margin:0" onclick="deleteCategory('${c.id}')">حذف</button>` : '<small style="color:#999">أساسي</small>'}
     </div>
   `).join('');
