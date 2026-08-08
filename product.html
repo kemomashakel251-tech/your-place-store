@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -69,14 +69,12 @@
 </header>
 
 <div class="container">
-  <div id="storeCatBar" class="store-cat-bar"></div>
   <div class="box" style="max-width:650px; margin:0 auto; padding:15px; border-radius:12px;">
     <a href="index.html" class="btn gray small" style="display:inline-block;margin-bottom:15px;">← العودة للمتجر الرئيسية</a>
 
     <div id="landingMedia" class="media-container" style="width:100%; height:380px; max-height:450px; border-radius:12px; background:#fafafa;"></div>
     <h1 id="landingTitle" style="text-align:center; margin:15px 0; font-size:26px;"></h1>
-    <div id="landingPrice" style="text-align:center; margin-bottom:10px;"></div>
-    <div id="lpBulkBanner" style="display:none"></div>
+    <div id="landingPrice" style="text-align:center; margin-bottom:15px;"></div>
 
     <div id="lpTimerWrapper" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:20px;">
       <div id="lpTimerText" style="margin-bottom:5px;"></div>
@@ -87,32 +85,9 @@
       </div>
     </div>
 
-    <div id="landingDesc" style="font-size:17px; line-height:1.8; color:#333; margin-bottom:15px; white-space:pre-line;"></div>
-
-    <div id="lpColorBox" style="display:none; margin:16px 0">
-      <label style="font-weight:700; display:block; margin-bottom:4px">اللون</label>
-      <div class="opt-list"></div>
-    </div>
-    <div id="lpSizeBox" style="display:none; margin:16px 0">
-      <label style="font-weight:700; display:block; margin-bottom:4px">المقاس</label>
-      <div class="opt-list"></div>
-    </div>
-    <div id="lpCustomBox" style="display:none; margin:16px 0"></div>
-
-    <div style="display:flex; align-items:center; gap:16px; margin:16px 0">
-      <label style="font-weight:700; margin:0">الكمية</label>
-      <div class="qty" style="gap:14px">
-        <button type="button" class="btn small" style="margin:0; width:40px" onclick="changeLPQty(1)">+</button>
-        <b id="lpQtyVal" style="font-size:18px; min-width:24px; text-align:center; display:inline-block">1</b>
-        <button type="button" class="btn small gray" style="margin:0; width:40px" onclick="changeLPQty(-1)">-</button>
-      </div>
-    </div>
-
+    <div id="landingDesc" style="font-size:18px; line-height:1.8; color:#333; margin-bottom:25px; white-space:pre-line;"></div>
     <hr>
-    <div style="display:flex; gap:10px">
-      <button class="btn green" id="landingBuyBtn" style="flex:1; font-size:17px; padding:15px">اطلب الآن 🛒</button>
-      <button type="button" class="btn" id="landingAddCartBtn" style="flex:1; font-size:17px; padding:15px; background:#fff; color:var(--main); border:2px solid var(--main)">أضف للسلة</button>
-    </div>
+    <button class="btn green" id="landingBuyBtn" style="font-size:20px; padding:15px; position:sticky; bottom:10px; z-index:999; box-shadow:0 4px 15px rgba(0,0,0,0.2);">طلب المنتج الآن والدفع عند الاستلام 🛒</button>
   </div>
 </div>
 
@@ -125,16 +100,11 @@ function getProductIdFromUrl(){
   return params.get('id');
 }
 
-function buyNow(){
-  let p = LP_PRODUCT;
-  if(!p) return;
-  if(addSelectionToCart(p)){
+function buyNow(id){
+  if(addC(id)){
     window.location.href = 'checkout.html';
   }
 }
-
-let LP_PRODUCT = null;
-let LP_SELECTED = { color:null, size:null, custom:{}, qty:1 };
 
 function renderProductPage(){
   let id = getProductIdFromUrl();
@@ -143,7 +113,6 @@ function renderProductPage(){
     document.querySelector('.container .box').innerHTML = '<p style="text-align:center;color:var(--muted)">المنتج مش موجود أو اتشال من المتجر.</p><a href="index.html" class="btn">الرجوع للمتجر</a>';
     return;
   }
-  LP_PRODUCT = p;
 
   document.title = p.n + ' - ' + (SET.name || 'yourplace_مكانك');
   document.getElementById('landingTitle').innerText = p.n;
@@ -153,14 +122,6 @@ function renderProductPage(){
     ? `<span style="text-decoration:line-through;color:var(--muted);font-size:18px; margin-left:10px;">${p.v} ${i18n[LANG].currency}</span> <span style="color:var(--main); font-size:26px; font-weight:bold;">${p.disc} ${i18n[LANG].currency}</span>`
     : `<span style="color:var(--main); font-size:26px; font-weight:bold;">${p.v} ${i18n[LANG].currency}</span>`;
   document.getElementById('landingPrice').innerHTML = priceHtml;
-
-  let bulkBanner = document.getElementById('lpBulkBanner');
-  if(p.bulk_on){
-    bulkBanner.style.display = 'block';
-    bulkBanner.innerHTML = `<div style="background:#fff3cd;color:#856404;padding:10px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:12px;text-align:center">🔥 اشترِ ${p.bulk_qty} قطع أو أكتر واحصل على خصم ${p.bulk_disc}%</div>`;
-  } else {
-    bulkBanner.style.display = 'none';
-  }
 
   let mediaList = p.media && p.media.length ? p.media : [{type:'image', src:'https://via.placeholder.com/400'}];
   let mediaItemsHtml = mediaList.map((m, i) => {
@@ -175,9 +136,8 @@ function renderProductPage(){
   document.getElementById('landingMedia').innerHTML = mediaItemsHtml + navHtml + dotsHtml;
   startLPAutoplay(mediaList.length);
 
-  renderLPSelectors(p);
-
-  document.getElementById('landingBuyBtn').setAttribute('onclick', 'buyNow()');
+  let buyBtn = document.getElementById('landingBuyBtn');
+  buyBtn.setAttribute('onclick', `buyNow('${p.id}');`);
 
   let timerWrap = document.getElementById('lpTimerWrapper');
   if(SET.countDownOn) {
@@ -188,75 +148,6 @@ function renderProductPage(){
      timerWrap.style.display = 'none';
   }
 }
-
-// بترسم اختيارات اللون/المقاس/الميزة المخصصة كأزرار (opt-btn)، وبتختار أول
-// قيمة تلقائيًا كافتراضي عشان الزرارين (اطلب الآن / أضف للسلة) يشتغلوا فورًا
-// من غير ما العميل يكون مجبر يدوس على كل خيار.
-function renderLPSelectors(p){
-  LP_SELECTED = { color: null, size: null, custom: {}, qty: 1 };
-
-  let colorBox = document.getElementById('lpColorBox');
-  if(p.cl && p.cl.length){
-    LP_SELECTED.color = p.cl[0];
-    colorBox.style.display = 'block';
-    colorBox.querySelector('.opt-list').innerHTML = p.cl.map((c,i) =>
-      `<button type="button" class="opt-btn ${i===0?'active':''}" onclick="selectLPOption('color', ${esc(JSON.stringify(c))}, this)">${esc(c)}</button>`
-    ).join('');
-  } else {
-    colorBox.style.display = 'none';
-  }
-
-  let sizeBox = document.getElementById('lpSizeBox');
-  if(p.sz && p.sz.length){
-    LP_SELECTED.size = p.sz[0];
-    sizeBox.style.display = 'block';
-    sizeBox.querySelector('.opt-list').innerHTML = p.sz.map((s,i) =>
-      `<button type="button" class="opt-btn ${i===0?'active':''}" onclick="selectLPOption('size', ${esc(JSON.stringify(s))}, this)">${esc(s)}</button>`
-    ).join('');
-  } else {
-    sizeBox.style.display = 'none';
-  }
-
-  let customBox = document.getElementById('lpCustomBox');
-  if(p.customVariants && p.customVariants.length){
-    customBox.style.display = 'block';
-    customBox.innerHTML = p.customVariants.map(cv => {
-      LP_SELECTED.custom[cv.name] = cv.name;
-      return `<div style="margin:10px 0"><label style="font-weight:700; display:block; margin-bottom:4px">${esc(cv.name)}</label><div class="opt-list"><button type="button" class="opt-btn active">${esc(cv.name)}</button></div></div>`;
-    }).join('');
-  } else {
-    customBox.style.display = 'none';
-  }
-
-  document.getElementById('lpQtyVal').innerText = '1';
-}
-
-function selectLPOption(type, value, btn){
-  LP_SELECTED[type] = value;
-  btn.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-function changeLPQty(dir){
-  let p = LP_PRODUCT;
-  if(!p) return;
-  let max = p.maxQty || 999;
-  let newQty = LP_SELECTED.qty + dir;
-  if(newQty < 1) newQty = 1;
-  if(newQty > max){ toast('أقصى كمية للطلب ' + max); newQty = max; }
-  LP_SELECTED.qty = newQty;
-  document.getElementById('lpQtyVal').innerText = newQty;
-}
-
-function addSelectionToCart(p){
-  return addToCartWithOptions(p.id, LP_SELECTED.qty, LP_SELECTED.color, LP_SELECTED.size, LP_SELECTED.custom);
-}
-
-document.getElementById('landingAddCartBtn').addEventListener('click', function(){
-  let p = LP_PRODUCT;
-  if(!p) return;
-  if(addSelectionToCart(p)) toast('تمت الإضافة للسلة ✅');
-});
 
 // جاليري صفحة المنتج: نفس فكرة كروسفيد كروت المتجر الرئيسي، بس بمؤقت واحد
 // بس لأن الصفحة فيها منتج واحد ظاهر في نفس اللحظة.

@@ -109,7 +109,7 @@ function previewMarketJson(){
     name: p.name || p.n || 'منتج بدون اسم',
     price: +p.price || +p.v || 0,
     stock: +p.stock ?? 0,
-    image: p.image || p.img || (p.media && p.media[0] && p.media[0].src) || 'https://via.placeholder.com/200',
+    image: safeImg(p.image || p.img || (p.media && p.media[0] && p.media[0].src)),
     description: p.description || p.d || ''
   }));
   localStorage.setItem('marketJson_' + ACTIVE_SUPPLIER_ID, raw);
@@ -121,7 +121,7 @@ function drawMarketGrid(){
   if(!MARKET_PRODUCTS.length){ box.innerHTML = '<p style="color:var(--muted)">مفيش منتجات للعرض</p>'; return; }
   box.innerHTML = MARKET_PRODUCTS.map((p,i) => `
     <div style="border:1px solid #eee;border-radius:12px;padding:10px;text-align:center">
-      <img src="${p.image}" style="width:100%;height:130px;object-fit:cover;border-radius:8px">
+      <img src="${safeImg(p.image)}" style="width:100%;height:130px;object-fit:cover;border-radius:8px">
       <b style="display:block;margin:8px 0 4px">${p.name}</b>
       <div style="color:var(--main);font-weight:700">${p.price} ${i18n[LANG].currency}</div>
       <div style="color:${p.stock>0?'var(--green)':'var(--red)'};font-size:13px">مخزون: ${p.stock}</div>

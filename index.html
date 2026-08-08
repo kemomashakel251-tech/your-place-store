@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -69,7 +69,7 @@
 </header>
 
 <div class="container">
-  <div id="storeCatBar" class="store-cat-bar"></div>
+  <div id="storeCatBar" style="display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;"></div>
   <div id="grid" class="products">جاري تحميل المنتجات...</div>
 </div>
 
@@ -179,9 +179,6 @@ window.onSettingsLoaded = function(){ drawStore(); };
 window.onProductsLoaded = function(){ drawStore(); };
 window.onLangChange = function(){ drawStore(); };
 window.onCartChange = function(){};
-
-let pendingCat = localStorage.getItem('pendingCatFilter');
-if(pendingCat){ currentFilter = pendingCat; localStorage.removeItem('pendingCatFilter'); }
 
 updateCartBadge();
 renderCartDrawer();
