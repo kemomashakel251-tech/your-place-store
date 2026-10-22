@@ -85,6 +85,9 @@
       </div>
     </div>
 
+    <div id="lpOptions" style="margin-bottom:18px"></div>
+    <div id="lpSizeChart" style="display:none; background:#f7f8fa; border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-bottom:20px; font-size:15px; line-height:1.9"></div>
+
     <div id="landingDesc" style="font-size:18px; line-height:1.8; color:#333; margin-bottom:25px; white-space:pre-line;"></div>
     <hr>
     <button class="btn green" id="landingBuyBtn" style="font-size:20px; padding:15px; position:sticky; bottom:10px; z-index:999; box-shadow:0 4px 15px rgba(0,0,0,0.2);">طلب المنتج الآن والدفع عند الاستلام 🛒</button>
@@ -95,21 +98,83 @@
 
 <script src="shared.js"></script>
 <script>
+// صفحة المنتج بتقرا المنتج ده بس من Firestore (قراءة واحدة) بدل كل المنتجات
+window.SELECTIVE_PRODUCTS = true;
+window.getNeededProductIds = function(){ return [getProductIdFromUrl()]; };
+
+let SEL = { size: null, color: null };   // اختيار العميل
+let PRODUCT_RESOLVED = false;            // true بعد ما القراءة الطازة تخلص
+let VIEWED_ID = null;                    // عشان ViewContent يتبعت مرة واحدة
+
 function getProductIdFromUrl(){
   let params = new URLSearchParams(window.location.search);
   return params.get('id');
 }
 
+// بنحفظ المقاس/اللون اللي العميل اختارهم عشان صفحة الدفع تطبّقهم تلقائي
+function savePreselect(id){
+  let all = {};
+  try{ all = JSON.parse(localStorage.getItem('preselect') || '{}') || {}; }catch(e){}
+  let entry = { sizes: {}, colors: {} };
+  if(SEL.size) entry.sizes[SEL.size] = 1;
+  if(SEL.color) entry.colors[SEL.color] = 1;
+  all[id] = entry;
+  try{ localStorage.setItem('preselect', JSON.stringify(all)); }catch(e){}
+}
+
 function buyNow(id){
-  if(addC(id)){
-    window.location.href = 'checkout.html';
+  let p = PROD.find(x => x.id == id);
+  if(!p) return;
+  if(p.stock <= 0) return toast(LANG==='ar' ? 'المنتج نفذ من المخزون' : 'Out of stock');
+  if(p.sz && p.sz.length && !SEL.size){
+    toast(LANG==='ar' ? 'من فضلك اختار المقاس الأول' : 'Please select a size first');
+    document.getElementById('lpOptions').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
   }
+  if(p.cl && p.cl.length && !SEL.color){
+    toast(LANG==='ar' ? 'من فضلك اختار اللون الأول' : 'Please select a color first');
+    document.getElementById('lpOptions').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  // "اطلب الآن" = قطعة واحدة بالمقاس/اللون المختار (الكمية تتعدل في صفحة الدفع)
+  savePreselect(id);
+  delete CART[id];
+  addC(id);
+  window.location.href = 'checkout.html';
+}
+
+function renderOptions(p){
+  let box = document.getElementById('lpOptions');
+  let html = '';
+  if(p.sz && p.sz.length){
+    html += `<div style="margin-bottom:12px"><b>${LANG==='ar' ? 'اختار المقاس' : 'Select size'}:</b><div>` +
+      p.sz.map(s => {
+        let q = p.stockBySize ? p.stockBySize[s] : undefined;
+        let out = (q !== undefined && q <= 0);
+        return `<button type="button" class="opt-btn ${SEL.size===s?'active':''} ${out?'disabled':''}" data-size="${esc(s)}">${esc(s)}</button>`;
+      }).join('') + `</div></div>`;
+  }
+  if(p.cl && p.cl.length){
+    html += `<div style="margin-bottom:12px"><b>${LANG==='ar' ? 'اختار اللون' : 'Select color'}:</b><div>` +
+      p.cl.map(c => {
+        let q = p.stockByColor ? p.stockByColor[c] : undefined;
+        let out = (q !== undefined && q <= 0);
+        return `<button type="button" class="opt-btn ${SEL.color===c?'active':''} ${out?'disabled':''}" data-color="${esc(c)}">${esc(c)}</button>`;
+      }).join('') + `</div></div>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('[data-size]').forEach(b => b.onclick = () => { SEL.size = b.dataset.size; renderOptions(p); });
+  box.querySelectorAll('[data-color]').forEach(b => b.onclick = () => { SEL.color = b.dataset.color; renderOptions(p); });
 }
 
 function renderProductPage(){
   let id = getProductIdFromUrl();
   let p = PROD.find(x => x.id == id);
   if(!p){
+    if(!PRODUCT_RESOLVED){
+      document.getElementById('landingTitle').innerText = LANG==='ar' ? 'جاري التحميل...' : 'Loading...';
+      return;
+    }
     document.querySelector('.container .box').innerHTML = '<p style="text-align:center;color:var(--muted)">المنتج مش موجود أو اتشال من المتجر.</p><a href="index.html" class="btn">الرجوع للمتجر</a>';
     return;
   }
@@ -118,6 +183,7 @@ function renderProductPage(){
   document.getElementById('landingTitle').innerText = p.n;
   document.getElementById('landingDesc').innerText = p.d || (LANG==='ar' ? 'لا يوجد وصف تفصيلي متوفر حالياً لهذا المنتج.' : 'No description available for this product.');
 
+  let unitPrice = (p.disc && p.disc < p.v) ? p.disc : p.v;
   let priceHtml = p.disc && p.disc < p.v
     ? `<span style="text-decoration:line-through;color:var(--muted);font-size:18px; margin-left:10px;">${p.v} ${i18n[LANG].currency}</span> <span style="color:var(--main); font-size:26px; font-weight:bold;">${p.disc} ${i18n[LANG].currency}</span>`
     : `<span style="color:var(--main); font-size:26px; font-weight:bold;">${p.v} ${i18n[LANG].currency}</span>`;
@@ -136,8 +202,28 @@ function renderProductPage(){
   document.getElementById('landingMedia').innerHTML = mediaItemsHtml + navHtml + dotsHtml;
   startLPAutoplay(mediaList.length);
 
+  // لو المقاس/اللون اللي كان مختار اتشال أو خلص، نلغي الاختيار
+  if(SEL.size && !(p.sz || []).includes(SEL.size)) SEL.size = null;
+  if(SEL.color && !(p.cl || []).includes(SEL.color)) SEL.color = null;
+  renderOptions(p);
+
+  let chartBox = document.getElementById('lpSizeChart');
+  if(p.sizeChart && p.sizeChart.trim()){
+    chartBox.style.display = 'block';
+    chartBox.innerHTML = `<b>📏 ${LANG==='ar' ? 'جدول المقاسات' : 'Size guide'}</b><div style="white-space:pre-line;margin-top:6px;color:#333">${esc(p.sizeChart)}</div>`;
+  } else {
+    chartBox.style.display = 'none';
+  }
+
   let buyBtn = document.getElementById('landingBuyBtn');
-  buyBtn.setAttribute('onclick', `buyNow('${p.id}');`);
+  if(p.stock <= 0){
+    buyBtn.disabled = true;
+    buyBtn.innerText = LANG==='ar' ? 'نفذت الكمية' : 'Out of stock';
+  } else {
+    buyBtn.disabled = false;
+    buyBtn.innerText = LANG==='ar' ? 'طلب المنتج الآن والدفع عند الاستلام 🛒' : 'Order now - Cash on delivery 🛒';
+  }
+  buyBtn.onclick = () => buyNow(p.id);
 
   let timerWrap = document.getElementById('lpTimerWrapper');
   if(SET.countDownOn) {
@@ -146,6 +232,12 @@ function renderProductPage(){
      startDynamicTimer('lpHours', 'lpMins', 'lpSecs');
   } else {
      timerWrap.style.display = 'none';
+  }
+
+  // ViewContent: مرة واحدة، وبعد القراءة الطازة بس (عشان السعر يبقى صح)
+  if(PRODUCT_RESOLVED && VIEWED_ID !== p.id){
+    VIEWED_ID = p.id;
+    trackEvent('ViewContent', { contents:[{ id:p.id, name:p.n, price:unitPrice, quantity:1 }], value:unitPrice });
   }
 }
 
@@ -180,8 +272,8 @@ function startLPAutoplay(count){
   cont.onmouseleave = () => { LP_AUTOPLAY_TIMER = setInterval(() => slideLPMedia(1), 4000); };
 }
 
-window.onSettingsLoaded = function(){ if(PROD.length) renderProductPage(); };
-window.onProductsLoaded = function(){ renderProductPage(); };
+window.onSettingsLoaded = function(){ if(PROD.length || PRODUCT_RESOLVED) renderProductPage(); };
+window.onProductsLoaded = function(){ PRODUCT_RESOLVED = true; renderProductPage(); };
 window.onLangChange = function(){ renderProductPage(); };
 window.onCartChange = function(){};
 

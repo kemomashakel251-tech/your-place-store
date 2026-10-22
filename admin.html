@@ -137,6 +137,9 @@
 
       <textarea id="pd" placeholder="الوصف" rows="3"></textarea>
 
+      <label><b>📏 جدول المقاسات ومعلومات الموديل (اختياري — بيظهر في صفحة المنتج):</b></label>
+      <textarea id="psizeChart" placeholder="مثال:&#10;S: صدر 100 - طول 68&#10;M: صدر 106 - طول 70&#10;L: صدر 112 - طول 72&#10;الموديل: طوله 178 ووزنه 75 وعلى لابس M" rows="5"></textarea>
+
       <label><b data-key="sizes">المقاسات</b></label>
       <div style="display:flex;gap:8px"><input id="szIn" placeholder="اكتب مقاس ودوس +"><button class="btn small" style="width:60px; margin:10px 0" onclick="addSz()">+</button></div>
       <div id="szTags"></div>
@@ -228,8 +231,11 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px">
     <button class="btn small" id="filterBtn-all" style="margin:0" onclick="setOrderFilter('all')">الكل</button>
     <button class="btn small gray" id="filterBtn-new" style="margin:0" onclick="setOrderFilter('new')">جديد</button>
+    <button class="btn small gray" id="filterBtn-noans" style="margin:0" onclick="setOrderFilter('noans')">لم يرد</button>
+    <button class="btn small gray" id="filterBtn-conf" style="margin:0" onclick="setOrderFilter('conf')">تم التأكيد</button>
     <button class="btn small gray" id="filterBtn-ship" style="margin:0" onclick="setOrderFilter('ship')">اتشحن</button>
     <button class="btn small gray" id="filterBtn-ok" style="margin:0" onclick="setOrderFilter('ok')">تم التسليم</button>
+    <button class="btn small gray" id="filterBtn-ret" style="margin:0" onclick="setOrderFilter('ret')">مرتجع</button>
     <button class="btn small gray" id="filterBtn-cancel" style="margin:0" onclick="setOrderFilter('cancel')">ملغي</button>
   </div>
   <input type="text" id="searchOrder" placeholder="ابحث برقم الطلب او اسم العميل او الموبايل..." 
@@ -240,6 +246,13 @@
 
   <div id="dashboard" class="page">
     <h3 data-key="dash_title">لوحة الإحصائيات المالّية والمخازن</h3>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <label><b>حساب "الأكثر مبيعًا" حسب:</b></label>
+      <select id="bestMode" style="max-width:340px;margin:0" onchange="drawDashboard()">
+        <option value="active">كل الطلبات الفعّالة (جديد + مؤكد + اتشحن + تم التسليم)</option>
+        <option value="ok">الطلبات المُسلَّمة فقط</option>
+      </select>
+    </div>
     <div class="stats-grid">
       <div class="stat-card">
         <h3 data-key="total_sales">إجمالي المبيعات</h3>
@@ -256,6 +269,21 @@
       <div class="stat-card">
         <h3>عدد الزيارات</h3>
         <p id="statVisits" style="color:#6f42c1">0 زيارة</p>
+      </div>
+      <div class="stat-card" style="border:2px solid #f59e0b">
+        <h3>🏆 المنتج الأكثر مبيعًا</h3>
+        <p id="statBestProduct" style="font-size:19px;color:#d97706">—</p>
+        <small id="statBestProductQty" style="color:var(--muted)"></small>
+      </div>
+      <div class="stat-card">
+        <h3>📏 المقاس الأكثر طلبًا</h3>
+        <p id="statBestSize" style="font-size:22px;color:#0d6efd">—</p>
+        <small id="statBestSizeQty" style="color:var(--muted)"></small>
+      </div>
+      <div class="stat-card">
+        <h3>🎨 اللون الأكثر طلبًا</h3>
+        <p id="statBestColor" style="font-size:22px;color:#6f42c1">—</p>
+        <small id="statBestColorQty" style="color:var(--muted)"></small>
       </div>
     </div>
     

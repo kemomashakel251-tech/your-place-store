@@ -157,6 +157,51 @@ function getPrice(p, qty=1){
   return price;
 }
 
+// ---------------- Tracking (Meta Pixel + TikTok Pixel) ----------------
+// trackEvent('ViewContent' | 'AddToCart' | 'InitiateCheckout' | 'Purchase', data)
+// data = { contents:[{id,name,price,quantity}], value, eventID }
+// لو البيكسل لسه ماتهيّأش (الإعدادات لسه بتتحمّل) الحدث بيستنى في طابور
+// وبيتبعت أول ما البيكسل يشتغل، فمفيش حدث بيضيع.
+const TT_EVENT_NAMES = { Purchase: 'CompletePayment' };
+let PENDING_EVENTS = [];
+
+function _fireTrack(name, d){
+  d = d || {};
+  let contents = d.contents || [];
+  let value = +d.value || 0;
+  try{
+    if(typeof fbq !== 'undefined' && SET.fbPixelId){
+      let params = {
+        content_type: 'product',
+        content_ids: contents.map(c => String(c.id)),
+        contents: contents.map(c => ({ id: String(c.id), quantity: c.quantity || 1, item_price: c.price || 0 })),
+        value: value,
+        currency: 'EGP'
+      };
+      if(contents.length === 1 && contents[0].name) params.content_name = contents[0].name;
+      if(d.eventID) fbq('track', name, params, { eventID: String(d.eventID) });
+      else fbq('track', name, params);
+    }
+  }catch(e){ console.warn('FB track failed', e); }
+  try{
+    if(typeof TMTK !== 'undefined' && SET.tiktokPixelId){
+      TMTK.push(['track', TT_EVENT_NAMES[name] || name, {
+        content_type: 'product',
+        contents: contents.map(c => ({ content_id: String(c.id), content_name: c.name || '', quantity: c.quantity || 1, price: c.price || 0 })),
+        value: value,
+        currency: 'EGP'
+      }]);
+    }
+  }catch(e){ console.warn('TikTok track failed', e); }
+}
+function trackEvent(name, d){
+  if(!pixelsInitialized){ PENDING_EVENTS.push([name, d]); return; }
+  _fireTrack(name, d);
+}
+function flushPendingEvents(){
+  PENDING_EVENTS.splice(0).forEach(([n, d]) => _fireTrack(n, d));
+}
+
 // ---------------- Cart (persisted across pages via localStorage) ----------------
 function saveCart(){ localStorage.setItem('cart', JSON.stringify(CART)); }
 
@@ -208,6 +253,8 @@ function addC(id){
   if((CART[id]||0) >= max){ toast(`اقصى عدد من ${p.n} هو ${max} قطعة`); return false; }
   CART[id]=(CART[id]||0)+1;
   saveCart();
+  let unitPrice = (p.disc && p.disc < p.v) ? p.disc : p.v;
+  trackEvent('AddToCart', { contents:[{ id:p.id, name:p.n, price:unitPrice, quantity:1 }], value:unitPrice });
   if(SET.skipCart){ window.location.href='checkout.html'; return true; }
   updateCartBadge(); renderCartDrawer();
   if(typeof onCartChange === 'function') onCartChange();
@@ -580,6 +627,7 @@ function initApp(){
         if(SET.fbPixelId && typeof fbq !== 'undefined'){ fbq('init', SET.fbPixelId); fbq('track', 'PageView'); }
         if(SET.tiktokPixelId && typeof TMTK !== 'undefined' && TMTK.load){ TMTK.load(SET.tiktokPixelId); TMTK.push(['track', 'PageView']); }
       }
+      flushPendingEvents();
       if(typeof window.onSettingsLoaded === 'function') window.onSettingsLoaded();
     }
 
@@ -640,9 +688,17 @@ function initApp(){
     loadAdvancedSettings();
 
     // عداد زيارات المتجر - يزيد مرة واحدة لكل تحميل للصفحة
+    // مرة واحدة لكل جلسة تصفح (مش كل تحميل صفحة) — الخطة المجانية Spark ليها
+    // حد 20 ألف كتابة في اليوم، ولو كل صفحة بتكتب هتخلص بسرعة مع زوار الإعلانات
+    // وساعتها الطلبات نفسها ممكن تتوقف عن الحفظ.
     if(!visitCounted){
       visitCounted = true;
-      setDoc(doc(db, "settings", "stats"), { visits: increment(1) }, { merge: true }).catch(()=>{});
+      let alreadyCounted = false;
+      try{ alreadyCounted = !!sessionStorage.getItem('visit_counted'); }catch(e){}
+      if(!alreadyCounted){
+        try{ sessionStorage.setItem('visit_counted', '1'); }catch(e){}
+        setDoc(doc(db, "settings", "stats"), { visits: increment(1) }, { merge: true }).catch(()=>{});
+      }
     }
 
     // Products fetch — كاش بمدة صلاحية (30 دقيقة) بدل ما نجيب كل المنتجات من
@@ -675,7 +731,37 @@ function initApp(){
       if(typeof window.onProductsLoaded === 'function') window.onProductsLoaded();
     }
     window.loadProducts = loadProducts;
-    loadProducts();
+
+    // صفحات المنتج والسلة والدفع مش محتاجة كل المنتجات — بتقرأ بس المنتجات اللي
+    // محتاجاها (getDoc لكل واحد) بدل getDocs على الكولكشن كله. ده بيوفّر قراءات
+    // Firestore جامد مع زوار الإعلانات (كاش فاضي)، وبيجيب سعر ومخزون طازة.
+    // الصفحة بتفعّل ده بـ window.SELECTIVE_PRODUCTS = true و
+    // window.getNeededProductIds = () => [ids...] قبل ما تنده initApp().
+    async function loadNeededProducts(){
+      let ids = (typeof window.getNeededProductIds === 'function' ? window.getNeededProductIds() : []) || [];
+      ids = Array.from(new Set(ids.filter(Boolean).map(String)));
+      let cartChanged = false;
+      await Promise.all(ids.map(async (id) => {
+        try{
+          let snap = await getDoc(doc(db, "products", id));
+          if(snap.exists()){
+            let fresh = { id: snap.id, ...snap.data() };
+            let idx = PROD.findIndex(p => p.id == id);
+            if(idx > -1) PROD[idx] = fresh; else PROD.push(fresh);
+          } else {
+            PROD = PROD.filter(p => p.id != id);
+            if(CART[id]){ delete CART[id]; cartChanged = true; }
+          }
+        }catch(e){ console.error('product load failed', id, e); }
+      }));
+      if(cartChanged) saveCart();
+      updateCartBadge();
+      if(typeof window.onProductsLoaded === 'function') window.onProductsLoaded();
+    }
+    window.loadNeededProducts = loadNeededProducts;
+
+    if(window.SELECTIVE_PRODUCTS){ loadNeededProducts(); }
+    else { loadProducts(); }
     // مفيش polling — بيتحدث تلقائي بس لما الكاش تعدت مدته (30 دقيقة) أو حد
     // نده loadProducts(true) يدوي (زي بعد إضافة منتج جديد من الأدمن مثلاً)
   });

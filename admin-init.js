@@ -129,6 +129,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
     loadProducts();
     loadSettings();
     loadStats();
+    if(typeof loadFinance === 'function') loadFinance();
 
     // الطلبات: onSnapshot حقيقي بس للأدمن عشان الإشعار الفوري
     onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snapshot) => {

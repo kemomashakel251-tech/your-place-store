@@ -214,7 +214,7 @@ function printAllOrders(){
       <td>${coupon.toFixed(1)}</td>
       <td>${shipping.toFixed(1)}</td>
       <td><b>${final.toFixed(1)}</b></td>
-      <td>${o.st=='new'?'جديد':o.st=='ok'?'تم':'ملغي'}</td>
+      <td>${esc(statusLabel(o.st))}</td>
     </tr>`;
   }).join('');
 

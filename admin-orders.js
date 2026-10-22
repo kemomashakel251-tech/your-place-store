@@ -2,6 +2,20 @@
 // price-tampering warnings, and order status transitions (ship / deliver /
 // cancel + stock return).
 
+// كل حالات الطلب في مكان واحد (الاسم + لون الشارة) — بتتستخدم في القايمة والفاتورة والتقارير.
+// conf = تم التأكيد تليفونيًا، noans = لم يرد، ret = مرتجع بعد الشحن
+const ORDER_STATUS = {
+  new:    { label: 'جديد',       cls: 'new' },
+  noans:  { label: 'لم يرد',     cls: 'noans' },
+  conf:   { label: 'تم التأكيد', cls: 'conf' },
+  ship:   { label: 'اتشحن',      cls: 'ship' },
+  ok:     { label: 'تم التسليم', cls: 'ok' },
+  ret:    { label: 'مرتجع',      cls: 'ret' },
+  cancel: { label: 'ملغي',       cls: 'cancel' }
+};
+function statusLabel(st){ return (ORDER_STATUS[st] || { label: st || '-' }).label; }
+function statusClass(st){ return (ORDER_STATUS[st] || { cls: 'cancel' }).cls; }
+
 function updateNewOrderBadge(){
   let badge = document.getElementById('newOrderBadge');
   if(!badge) return;
@@ -22,7 +36,7 @@ function clearNewOrderBadge(){
 let ORDER_FILTER = 'all';
 function setOrderFilter(f){
   ORDER_FILTER = f;
-  ['all','new','ship','ok','cancel'].forEach(k => {
+  ['all','new','noans','conf','ship','ok','ret','cancel'].forEach(k => {
     let btn = document.getElementById('filterBtn-'+k);
     if(btn) btn.className = k === f ? 'btn small' : 'btn small gray';
   });
@@ -90,9 +104,7 @@ function drawO(){
     <div class="order" id="order-${o.id}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <h4 style="margin:0">${i18n[LANG].order_no} #${esc((o.orderNum || o.id).toString().slice(-6))}</h4>
-        <span class="badge ${o.st=='new'?'new':o.st=='ship'?'ship':o.st=='ok'?'ok':'cancel'}">
-          ${o.st=='new'?'جديد':o.st=='ship'?'اتشحن':o.st=='ok'?'تم التسليم':'ملغي'}
-        </span>
+        <span class="badge ${statusClass(o.st)}">${statusLabel(o.st)}</span>
       </div>
       <p style="margin:6px 0;color:var(--muted)"><b>${esc(formatOrderDate(o))}</b></p>
       <p><b>${o.c ? esc(o.c.n) : ''}</b> - ${o.c ? esc(o.c.p) : ''}${o.c && o.c.p2 ? ` / ${esc(o.c.p2)}` : ''}</p>
@@ -102,8 +114,11 @@ function drawO(){
       ${noteHtml}
       <h4 style="color:var(--main)">${i18n[LANG].total_lbl}: ${(o.tot || 0).toFixed(1)} ${i18n[LANG].currency}</h4>
        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" style="background:#6f42c1;color:#fff" onclick="setSt('${o.id}','conf')">تم التأكيد</button>
+        <button class="btn small" style="background:#fd7e14;color:#fff" onclick="setSt('${o.id}','noans')">لم يرد</button>
         <button class="btn small" style="background:#0ea5e9;color:#fff" onclick="setShipped('${o.id}')">اتشحن</button>
         <button class="btn green small" onclick="setSt('${o.id}','ok')">تم التسليم</button>
+        <button class="btn small" style="background:#b45309;color:#fff" onclick="setSt('${o.id}','ret')">مرتجع</button>
         <button class="btn red small" onclick="setSt('${o.id}','cancel')">إلغاء الطلب</button>
         <button class="btn gray small" style="background:#444; color:#fff" onclick="printInvoice('${o.id}')">طباعة</button>
         <button class="btn red small" style="background:#dc3545" onclick="delOrder('${o.id}')">حذف</button>
@@ -125,17 +140,22 @@ async function setShipped(id){
 
 async function setSt(id,st){
   let o = ORD.find(x=>x.id==id);
-  if(o){ 
-    if(st === 'cancel' && o.st !== 'cancel'){
-      await returnStockForOrder(o);
-      o.st = st; 
-      await updateDoc(doc(db, "orders", id), {st: st});
-      toast('تم الإلغاء وإرجاع المخزون للمنتجات'); 
-    } else {
-      o.st = st; 
-      await updateDoc(doc(db, "orders", id), {st: st});
-      toast('تم التحديث'); 
-    }
+  if(!o) return;
+  // الإلغاء والمرتجع الاتنين بيرجّعوا القطع للمخزون — مرة واحدة بس
+  // (لو الطلب ملغي وبعدين اتحول لمرتجع أو العكس، المخزون مايترجعش تاني).
+  let releasesStock = (st === 'cancel' || st === 'ret');
+  let alreadyReleased = (o.st === 'cancel' || o.st === 'ret');
+  if(releasesStock && !alreadyReleased){
+    await returnStockForOrder(o);
+    o.st = st;
+    await updateDoc(doc(db, "orders", id), {st: st});
+    toast(st === 'ret' ? 'تم تسجيل المرتجع وإرجاع المخزون للمنتجات' : 'تم الإلغاء وإرجاع المخزون للمنتجات');
+  } else {
+    o.st = st;
+    await updateDoc(doc(db, "orders", id), {st: st});
+    toast(alreadyReleased && !releasesStock
+      ? 'تم التحديث — تنبيه: المخزون اتّرجع قبل كده ومش هيتخصم تاني، عدّله يدوي لو محتاج'
+      : 'تم التحديث');
   }
 }
 
@@ -274,7 +294,7 @@ function printInvoice(id){
         <b>التليفون:</b> ${cPhone} <br>
         <b>المحافظة:</b> ${cGov} <br>
         <b>العنوان:</b> ${cAddr} <br>
-        <b>الحالة:</b> ${o.st=='new'?'جديد':o.st=='ok'?'تم التسليم':'ملغي'}
+        <b>الحالة:</b> ${esc(statusLabel(o.st))}
         ${(o.payments && o.payments.length) ? `<br><b>وسيلة الدفع:</b> ${o.payments.map(pm=>esc(pm.label)).join('، ')}` : (o.paymentScreenshot ? `<br><b>وسيلة الدفع:</b> ${o.paymentMethod==='instapay'?'InstaPay':'فودافون كاش'}` : '')}
         ${o.note ? `<br><b>ملاحظة العميل:</b> ${esc(o.note)}` : ''}
       </div>

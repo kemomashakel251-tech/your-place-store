@@ -1,6 +1,10 @@
 // admin-products.js — the "add/edit product" form (media gallery,
 // sizes/colors/custom variants) and the products management table.
 
+// جدول المقاسات ومعلومات الموديل (حقل نصي اختياري بيظهر في صفحة المنتج)
+function getSizeChartVal(){ let el = document.getElementById('psizeChart'); return el ? el.value.trim() : ''; }
+function setSizeChartVal(v){ let el = document.getElementById('psizeChart'); if(el) el.value = v || ''; }
+
 function renderPreviewGallery() {
   previewGallery.innerHTML = TMP_MEDIA.map((m, idx) => `
     <div class="preview-item">
@@ -37,7 +41,7 @@ function drawCustomStock(){
 function resetTags() {
   TMP_SZ=[];TMP_CL=[];TMP_CL_STOCK={};TMP_SZ_STOCK={};TMP_MEDIA=[];TMP_CUSTOM=[];
   drawTags();drawClStock();drawSzStock();drawCustomStock();renderPreviewGallery();
-  pn.value=''; pp.value=''; pd.value=''; pdisc.value=''; pstock.value='0'; pcost.value='';
+  pn.value=''; pp.value=''; pd.value=''; pdisc.value=''; pstock.value='0'; pcost.value=''; setSizeChartVal('');
   pi.value=''; showStock.checked=true; document.getElementById('pCat').value = 'all';
   let btn = document.getElementById('productBtn');
   btn.innerText = "اضافة المنتج";
@@ -54,6 +58,7 @@ async function addP(){
       cost: +pcost.value || 0,
       v: +pp.value,
       d: pd.value,
+      sizeChart: getSizeChartVal(),
       media: [...TMP_MEDIA],
       sz: [...TMP_SZ],
       cl: [...TMP_CL],
@@ -125,6 +130,7 @@ function editP(id){
   pstock.value = p.stock || 0;
   pmax.value = (p.maxQty && p.maxQty!= 999)? p.maxQty : '';
   pd.value = p.d || '';
+  setSizeChartVal(p.sizeChart);
   showStock.checked = p.showStock ?? true;
 
   TMP_SZ = [...(p.sz || [])];
@@ -160,6 +166,7 @@ async function updateP(id){
       cost: +pcost.value || 0,
       v: +pp.value,
       d: pd.value,
+      sizeChart: getSizeChartVal(),
       media: [...TMP_MEDIA],
       sz: [...TMP_SZ],
       cl: [...TMP_CL],

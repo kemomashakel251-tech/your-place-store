@@ -59,6 +59,9 @@
 
 <script src="shared.js"></script>
 <script>
+// السلة بتقرا بس المنتجات اللي جواها بدل كل المنتجات
+window.SELECTIVE_PRODUCTS = true;
+window.getNeededProductIds = function(){ return Object.keys(CART); };
 window.onSettingsLoaded = function(){};
 window.onProductsLoaded = function(){ renderCartDrawer(); };
 window.onLangChange = function(){ renderCartDrawer(); };

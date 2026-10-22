@@ -272,11 +272,20 @@ async function finish(){
     if(payments.length) newOrder.payments = payments;
     if(noteParts.length) newOrder.note = noteParts.join(' | ');
 
-    if(typeof fbq !== 'undefined' && SET.fbPixelId){ fbq('track','Purchase',{value:LAST.tot,currency:'EGP'}); }
-    if(typeof TMTK !== 'undefined' && SET.tiktokPixelId){ TMTK.push(['track','CompletePayment',{value:LAST.tot,currency:'EGP'}]); }
-
     await window.saveOrderToCloud(newOrder);
+
+    // Purchase بيتبعت بعد ما الطلب يتحفظ فعلاً (مش قبله)، ومعاه content_ids و
+    // eventID ثابت (رقم الطلب) عشان نقدر نربطه بـ Conversions API بعدين من غير تكرار.
+    trackEvent('Purchase', {
+      contents: items.map(i => ({ id: i.id, name: i.n, price: i.v, quantity: i.q })),
+      value: LAST.tot,
+      eventID: newOrder.id
+    });
+    try{ localStorage.removeItem('preselect'); }catch(e){}
+
     CART={};CHK_OPTS={};COUPON=0;VF_SCREENSHOT=null;INSTA_SCREENSHOT=null;saveCart();
+    // مهلة قصيرة عشان طلب البيكسل يلحق يخرج قبل ما الصفحة تتغير
+    await new Promise(r => setTimeout(r, 400));
     window.location.href = 'thank-you.html';
   } catch(e) {
     console.error('Order error:', e);
@@ -317,6 +326,35 @@ function updateUrlWithProductId(){
   history.replaceState(null, '', newUrl);
 }
 
+// المقاس/اللون اللي العميل اختاره في صفحة المنتج (محفوظين في localStorage) —
+// بنطبّقهم هنا بدل ما نفترض أول مقاس في القايمة.
+function applyPreselect(id, p){
+  let all = {};
+  try{ all = JSON.parse(localStorage.getItem('preselect') || '{}') || {}; }catch(e){}
+  let sel = all[id];
+  if(!sel) return;
+  let total = CART[id];
+  let opt = CHK_OPTS[id];
+  let pickedSizes = Object.keys(sel.sizes || {}).filter(k => (p.sz || []).includes(k));
+  let pickedColors = Object.keys(sel.colors || {}).filter(k => (p.cl || []).includes(k));
+  if(pickedSizes.length === 1) opt.sizes = { [pickedSizes[0]]: total };
+  if(pickedColors.length === 1) opt.colors = { [pickedColors[0]]: total };
+}
+
+// InitiateCheckout: مرة واحدة لكل زيارة لصفحة الدفع
+let CHECKOUT_TRACKED = false;
+function trackInitiateCheckout(){
+  if(CHECKOUT_TRACKED) return;
+  let contents = Object.keys(CART).map(id => {
+    let p = PROD.find(x => x.id == id);
+    return p ? { id: id, name: p.n, price: getPrice(p, CART[id]), quantity: CART[id] } : null;
+  }).filter(Boolean);
+  if(!contents.length) return;
+  CHECKOUT_TRACKED = true;
+  let value = contents.reduce((t, c) => t + c.price * c.quantity, 0);
+  trackEvent('InitiateCheckout', { contents: contents, value: value });
+}
+
 function renderCheckout(){
   addFromUrlIfPresent();
   if(!Object.keys(CART).length){
@@ -341,7 +379,10 @@ function renderCheckout(){
 
   document.getElementById('checkList').innerHTML = noteHtml + countDownHtml + Object.keys(CART).map(id=>{
     let p=PROD.find(x=>x.id==id); if(!p) return '';
-    if(!CHK_OPTS[id])CHK_OPTS[id]={q:CART[id],sizes:{},colors:{},custom:{}};
+    if(!CHK_OPTS[id]){
+      CHK_OPTS[id]={q:CART[id],sizes:{},colors:{},custom:{}};
+      applyPreselect(id, p);
+    }
     if(!CHK_OPTS[id].custom) CHK_OPTS[id].custom = {};
     let opt = CHK_OPTS[id]; let totalQty = CART[id]; let price = getPrice(p, totalQty);
 
@@ -441,6 +482,7 @@ function renderCheckout(){
   onPayMethodChange();
 
   if(SET.countDownOn) { startDynamicTimer('chkHours', 'chkMins', 'chkSecs'); }
+  trackInitiateCheckout();
 }
 
 // بتظهر بوكس فودافون كاش أو InstaPay بس لو العميل اختار طريقة الدفع دي فعلاً
@@ -518,8 +560,17 @@ document.getElementById('instaScreenshot').addEventListener('change', function(e
   reader.readAsDataURL(file);
 });
 
-window.onSettingsLoaded = function(){ if(PROD.length) renderCheckout(); };
-window.onProductsLoaded = function(){ renderCheckout(); };
+// صفحة الدفع بتقرا بس المنتجات اللي في السلة (أو اللي في ?id=) بدل كل المنتجات
+window.SELECTIVE_PRODUCTS = true;
+window.getNeededProductIds = function(){
+  let ids = Object.keys(CART);
+  let urlId = new URLSearchParams(window.location.search).get('id');
+  if(urlId) ids.push(urlId);
+  return ids;
+};
+let CHECKOUT_READY = false;
+window.onSettingsLoaded = function(){ if(CHECKOUT_READY) renderCheckout(); };
+window.onProductsLoaded = function(){ CHECKOUT_READY = true; renderCheckout(); };
 window.onLangChange = function(){ renderCheckout(); };
 window.onCartChange = function(){};
 
