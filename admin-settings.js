@@ -175,6 +175,7 @@ async function saveS(){
   SET.tiktokUrl=$val('tiktokUrl').trim();
 
   if(TMP_LOGO_IMG !== null) SET.logoImg = TMP_LOGO_IMG;
+  if(typeof applyFavicon === 'function') applyFavicon(SET.logoImg);
 
   applyTheme(SET.theme); saveAll(); $set('sName','innerText',SET.name);
 

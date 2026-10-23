@@ -602,6 +602,7 @@ function initApp(){
 
     function applySettingsToDOM(){
       applyTheme(SET.theme);
+      if(typeof applyFavicon === 'function') applyFavicon(SET.logoImg); // شعار المتجر كأيقونة للتبويب
       let sNameEl = document.getElementById('sName');
       if(sNameEl){
         if(SET.logoImg){
