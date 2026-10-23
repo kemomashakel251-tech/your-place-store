@@ -74,10 +74,13 @@
       <span id="menu" style="display:none; gap:8px">
         <a onclick="go('store')" data-key="nav_store">المتجر</a>
         <a onclick="go('products')" data-key="nav_products">المنتجات</a>
-        <a onclick="go('suppliers')" style="position:relative" data-key="nav_suppliers">الموردين<span id="supplierSyncBadge" style="display:none;position:absolute;top:-6px;left:-10px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;min-width:16px;text-align:center">!</span></a>
-        <a onclick="go('orders')" style="position:relative" data-key="nav_orders">الطلبات<span id="newOrderBadge" style="display:none;position:absolute;top:-6px;left:-10px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;min-width:16px;text-align:center"></span></a>
+        <a onclick="go('suppliers')" style="position:relative"><span data-key="nav_suppliers">الموردين</span><span id="supplierSyncBadge" style="display:none;position:absolute;top:-6px;left:-10px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;min-width:16px;text-align:center">!</span></a>
+        <a onclick="go('orders')" style="position:relative"><span data-key="nav_orders">الطلبات</span><span id="newOrderBadge" style="display:none;position:absolute;top:-9px;left:-8px;background:var(--red);color:#fff;border-radius:11px;font-size:12px;font-weight:700;padding:1px 6px;min-width:20px;text-align:center;line-height:18px"></span></a>
         <a onclick="go('dashboard')" data-key="nav_dash">الإحصائيات</a>
+        <a onclick="go('customers')">العملاء</a>
+        <a onclick="go('backup')" style="position:relative">نسخ احتياطي<span id="backupBadge" style="display:none;position:absolute;top:-6px;left:-10px;background:var(--red);color:#fff;border-radius:50%;width:12px;height:12px"></span></a>
         <a onclick="go('settings')" data-key="nav_settings">الاعدادات</a>
+        <a id="alertBtn" onclick="toggleOrderAlerts()" title="إشعارات الطلبات الجديدة">🔔</a>
         <a onclick="cartToggle()"><span data-key="nav_cart">السلة</span> 🛒 <b id="cNum">0</b></a>
         <a onclick="logout()" style="background:#333" data-key="logout">خروج</a>
       </span>
@@ -253,6 +256,7 @@
         <option value="ok">الطلبات المُسلَّمة فقط</option>
       </select>
     </div>
+    <div id="statusBreakdown" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
     <div class="stats-grid">
       <div class="stat-card">
         <h3 data-key="total_sales">إجمالي المبيعات</h3>
@@ -269,6 +273,15 @@
       <div class="stat-card">
         <h3>عدد الزيارات</h3>
         <p id="statVisits" style="color:#6f42c1">0 زيارة</p>
+      </div>
+      <div class="stat-card" style="border:2px dashed #0ea5e9">
+        <h3>⏳ مبيعات متوقعة (جديد + مؤكد + اتشحن)</h3>
+        <p id="statPendingSales" style="color:#0ea5e9">0 جنيه</p>
+        <small id="statPendingQty" style="color:var(--muted)"></small>
+      </div>
+      <div class="stat-card" style="border:2px dashed #0ea5e9">
+        <h3>⏳ ربح متوقع (قبل الشحن والإعلانات)</h3>
+        <p id="statPendingProfit" style="color:#0ea5e9">0 جنيه</p>
       </div>
       <div class="stat-card" style="border:2px solid #f59e0b">
         <h3>🏆 المنتج الأكثر مبيعًا</h3>
@@ -328,6 +341,50 @@
           <tbody id="dashSizeStockTable"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <div id="customers" class="page">
+    <h3>👥 العملاء</h3>
+    <p style="color:var(--muted);margin-top:0">القايمة متبنية من الطلبات (مجمّعة برقم الموبايل). مفيش قراءات إضافية من Firebase.</p>
+    <div class="stats-grid" id="custSummary"></div>
+    <div class="box">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <button class="btn small" id="custFilterBtn-all" style="margin:0" onclick="setCustFilter('all')">الكل</button>
+        <button class="btn small gray" id="custFilterBtn-repeat" style="margin:0" onclick="setCustFilter('repeat')">⭐ المتكررين</button>
+        <button class="btn small gray" id="custFilterBtn-risky" style="margin:0" onclick="setCustFilter('risky')">⚠️ مرتجعات / مش بيرد</button>
+        <select id="custSort" style="max-width:200px;margin:0" onchange="drawCustomers()">
+          <option value="last">الأحدث طلبًا</option>
+          <option value="spent">الأكثر إنفاقًا</option>
+          <option value="orders">الأكثر طلبات</option>
+        </select>
+        <button class="btn small gray" style="margin:0;background:#444;color:#fff" onclick="exportCustomersCSV()">⬇️ تصدير CSV</button>
+      </div>
+      <input type="text" id="custSearch" placeholder="ابحث بالاسم أو رقم الموبايل..." style="margin-top:0">
+      <label><b>رسالة واتساب الجاهزة (زرار 💬 في كل صف):</b></label>
+      <select id="custTpl" onchange="drawCustomers()"></select>
+      <div id="custList">مفيش عملاء لسه</div>
+    </div>
+  </div>
+
+  <div id="backup" class="page">
+    <h3>💾 النسخ الاحتياطي</h3>
+    <div class="box">
+      <p id="backupLast" style="margin-top:0"></p>
+      <p style="color:var(--muted)">الخطة المجانية (Spark) مفيهاش نسخ احتياطي تلقائي. خد نسخة <b>كل أسبوع</b> وقبل أي تحديث كبير، واحفظها في Google Drive أو على جهاز تاني.</p>
+      <button class="btn" style="max-width:340px" onclick="exportBackup()">⬇️ تحميل نسخة كاملة (JSON)</button>
+      <p style="color:var(--muted);font-size:14px">بتشمل: المنتجات والطلبات والموردين والإعدادات والتكاليف. كل نسخة بتقرا كل المستندات من Firebase (بتتحسب من حصة القراءات اليومية). الملف فيه بيانات عملاء ومفاتيح موردين، فاحفظه في مكان آمن.</p>
+      <pre id="backupStatus" style="white-space:pre-wrap;color:var(--main);font-weight:700;margin:8px 0"></pre>
+    </div>
+    <div class="box">
+      <h4 style="margin-top:0">📄 تصدير للإكسيل</h4>
+      <button class="btn small gray" style="background:#444;color:#fff" onclick="exportOrdersCSV()">تصدير كل الطلبات CSV</button>
+      <button class="btn small gray" style="background:#444;color:#fff" onclick="exportCustomersCSV()">تصدير العملاء CSV</button>
+    </div>
+    <div class="box" style="border:1px solid #f5c2c7">
+      <h4 style="margin-top:0;color:var(--red)">♻️ استرجاع من نسخة</h4>
+      <p style="color:var(--muted);margin-top:0">بيكتب فوق أي منتج/طلب/إعداد ليه نفس الـ id، ومابيمسحش حاجة تانية. جرّب الأول على مشروع تجريبي لو ممكن.</p>
+      <input type="file" accept="application/json,.json" onchange="restoreBackupFromFile(this)">
     </div>
   </div>
 
@@ -567,6 +624,8 @@
 <script src="admin-orders.js"></script>
 <script src="admin-dashboard.js"></script>
 <script src="admin-settings.js"></script>
+<script src="admin-customers.js"></script>
+<script src="admin-backup.js"></script>
 <script src="admin-init.js"></script>
 </body>
 </html>

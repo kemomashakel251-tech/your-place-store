@@ -310,9 +310,11 @@ function go(id){
   if(id=='store')drawStore();
   if(id=='products')drawP();
   if(id=='suppliers') drawSuppliers();
-  if(id=='orders'){ drawO(); clearNewOrderBadge(); }
+  if(id=='orders'){ drawO(); updateNewOrderBadge(); }
   if(id=='settings')drawS();
   if(id=='dashboard')drawDashboard();
+  if(id=='customers'){ initCustomersPage(); drawCustomers(); }
+  if(id=='backup') drawBackupPage();
   
   if(id !== 'landingPage' && id !== 'checkout' && timerIntervalGlobal) {
      clearInterval(timerIntervalGlobal);

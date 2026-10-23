@@ -1,0 +1,11 @@
+{
+  "name": "store-tests",
+  "private": true,
+  "description": "اختبارات آلية لمتجر yourplace (بتشتغل على الملفات الحقيقية جوه jsdom، من غير Firebase)",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}

@@ -3,7 +3,7 @@
 // (login state -> starts the protected admin listeners). Must load LAST.
 
 let db; 
-let collection, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, increment, runTransaction;
+let collection, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, increment, runTransaction, Timestamp;
 
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js").then(({ initializeApp }) => {
 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js").then((firestore) => {
@@ -23,6 +23,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
   deleteDoc = firestore.deleteDoc;
   increment = firestore.increment;
   runTransaction = firestore.runTransaction;
+  Timestamp = firestore.Timestamp;
   
   const app = initializeApp({
     apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",
@@ -130,6 +131,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
     loadSettings();
     loadStats();
     if(typeof loadFinance === 'function') loadFinance();
+    if(typeof checkBackupBadge === 'function') checkBackupBadge();
 
     // الطلبات: onSnapshot حقيقي بس للأدمن عشان الإشعار الفوري
     onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snapshot) => {
@@ -142,6 +144,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
       });
       if(document.getElementById('orders').classList.contains('on')) drawO(); 
       if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
+      if(typeof handleOrderChanges === 'function') handleOrderChanges(snapshot);
       updateNewOrderBadge();
     });
 

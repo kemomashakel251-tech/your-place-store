@@ -73,3 +73,7 @@ body[dir="ltr"] #cart { left: auto; right: 20px; }
   .order{padding:14px}
   .order .btn.small{flex:1 1 auto; min-width:0}
 }
+
+/* نقطة الطلبات الجديدة فوق قايمة "الطلبات" */
+#newOrderBadge{animation:badgePulse 1.6s infinite}
+@keyframes badgePulse{0%{box-shadow:0 0 0 0 rgba(220,53,69,.65)}70%{box-shadow:0 0 0 9px rgba(220,53,69,0)}100%{box-shadow:0 0 0 0 rgba(220,53,69,0)}}

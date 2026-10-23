@@ -16,22 +16,144 @@ const ORDER_STATUS = {
 function statusLabel(st){ return (ORDER_STATUS[st] || { label: st || '-' }).label; }
 function statusClass(st){ return (ORDER_STATUS[st] || { cls: 'cancel' }).cls; }
 
+// عنوان الصفحة الأصلي (بنضيف عليه عدد الطلبات الجديدة: "(3) لوحة التحكم")
+const BASE_TITLE = document.title;
+
+// النقطة الحمرا فوق "الطلبات": عدد الطلبات الجديدة (اللي لسه ماتأكدتش/ماتعاملتش).
+// بتفضل ظاهرة طول ما فيه طلبات جديدة، حتى وإنت جوه صفحة الطلبات.
 function updateNewOrderBadge(){
-  let badge = document.getElementById('newOrderBadge');
-  if(!badge) return;
-  let onOrdersPage = document.getElementById('orders').classList.contains('on');
   let newCount = ORD.filter(o => o.st === 'new').length;
-  if(newCount > 0 && !onOrdersPage){
-    badge.innerText = newCount > 99 ? '99+' : newCount;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-function clearNewOrderBadge(){
   let badge = document.getElementById('newOrderBadge');
-  if(badge) badge.style.display = 'none';
+  if(badge){
+    if(newCount > 0){
+      badge.innerText = newCount > 99 ? '99+' : newCount;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  document.title = newCount > 0 ? `(${newCount > 99 ? '99+' : newCount}) ${BASE_TITLE}` : BASE_TITLE;
 }
+function clearNewOrderBadge(){ updateNewOrderBadge(); }
+
+// ================= إشعار الطلب الجديد (صوت + بانر + إشعار متصفح) =================
+// بيشتغل طول ما لوحة التحكم مفتوحة (حتى في تبويب تاني). لو اللوحة مقفولة مفيش إشعار —
+// ده محتاج Cloud Functions (خطة Blaze) أو واتساب/تيليجرام، وده مش موجود دلوقتي.
+function orderAlertsMuted(){
+  try{ return localStorage.getItem('orderSound') === 'off'; }catch(e){ return false; }
+}
+
+let __audioCtx = null;
+function getAudioCtx(){
+  if(!__audioCtx){
+    let AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) __audioCtx = new AC();
+  }
+  return __audioCtx;
+}
+
+// نغمتين قصيرتين (من غير ملف صوت)
+function playOrderSound(){
+  if(orderAlertsMuted()) return;
+  try{
+    let ctx = getAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended' && ctx.resume) ctx.resume();
+    [[880, 0], [1175, 0.22]].forEach(([freq, delay]) => {
+      let osc = ctx.createOscillator();
+      let gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      let t0 = ctx.currentTime + delay;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.3, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + 0.32);
+    });
+  }catch(e){ console.warn('sound failed', e); }
+}
+
+// بانر أحمر فوق الصفحة (بيضغط عليه تروح للطلبات)
+function showNewOrderBanner(text){
+  let el = document.getElementById('newOrderBanner');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'newOrderBanner';
+    el.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:10000;background:#dc3545;color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:16px;box-shadow:0 6px 24px #0005;cursor:pointer;max-width:92vw;text-align:center';
+    el.onclick = () => { el.style.display = 'none'; go('orders'); };
+    document.body.appendChild(el);
+  }
+  el.innerText = text + ' — اضغط للعرض';
+  el.style.display = 'block';
+  clearTimeout(el.__timer);
+  el.__timer = setTimeout(() => { el.style.display = 'none'; }, 12000);
+}
+
+// إشعار نظام (بيظهر بس لو التبويب مش قدامك وإنت وافقت على الإذن)
+function showBrowserNotification(title, body){
+  try{
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    if(!document.hidden) return;
+    let n = new Notification(title, { body });
+    n.onclick = () => { window.focus(); go('orders'); n.close(); };
+  }catch(e){}
+}
+
+function notifyNewOrder(data){
+  let name = data && data.c && data.c.n ? data.c.n : '';
+  let total = Math.round(Number(data && data.tot || 0));
+  let text = `🔔 طلب جديد${name ? ' من ' + name : ''} — ${total} جنيه`;
+  showNewOrderBanner(text);
+  playOrderSound();
+  showBrowserNotification('طلب جديد 🔔', `${name ? name + ' — ' : ''}${total} جنيه`);
+}
+
+// بتتنده مع كل تحديث من Firestore: أول تحميل بيتسكت (مش طلبات جديدة)، وبعد كده
+// أي طلب "اتضاف" وحالته جديد بييجي منه إشعار.
+let __ordersSnapshotSeen = false;
+function handleOrderChanges(snapshot){
+  if(__ordersSnapshotSeen){
+    snapshot.docChanges().forEach(ch => {
+      if(ch.type !== 'added') return;
+      if(ch.doc.metadata && ch.doc.metadata.hasPendingWrites) return; // اتكتب من اللوحة نفسها (زي استرجاع نسخة احتياطية)
+      let d = ch.doc.data();
+      if(d && d.st === 'new') notifyNewOrder(d);
+    });
+  }
+  __ordersSnapshotSeen = true;
+}
+
+// زرار 🔔 في القايمة: أول ضغطة بتطلب إذن الإشعارات وبتشغّل الصوت، وبعدها بيكتم/يفتح الصوت
+function updateAlertBtn(){
+  let b = document.getElementById('alertBtn');
+  if(!b) return;
+  b.innerText = orderAlertsMuted() ? '🔕' : '🔔';
+  b.title = orderAlertsMuted() ? 'صوت الإشعارات مكتوم (اضغط للتشغيل)' : 'صوت إشعارات الطلبات شغّال (اضغط للكتم)';
+}
+function toggleOrderAlerts(){
+  let canAsk = ('Notification' in window) && Notification.permission === 'default';
+  if(canAsk){
+    try{ localStorage.setItem('orderSound', 'on'); }catch(e){}
+    Notification.requestPermission();
+    playOrderSound();
+    toast('🔔 الإشعارات شغّالة — وافق على إذن المتصفح عشان توصلك والصفحة في الخلفية');
+  } else if(orderAlertsMuted()){
+    try{ localStorage.setItem('orderSound', 'on'); }catch(e){}
+    playOrderSound();
+    toast('🔔 تم تشغيل صوت الإشعارات');
+  } else {
+    try{ localStorage.setItem('orderSound', 'off'); }catch(e){}
+    toast('🔕 تم كتم صوت الإشعارات');
+  }
+  updateAlertBtn();
+}
+// المتصفحات بتمنع الصوت لحد أول ضغطة من المستخدم — أول ضغطة (زي تسجيل الدخول) بتفتحه
+document.addEventListener('click', () => {
+  let c = getAudioCtx();
+  if(c && c.state === 'suspended' && c.resume) c.resume();
+}, { once: true });
+updateAlertBtn();
 
 let ORDER_FILTER = 'all';
 function setOrderFilter(f){
@@ -109,6 +231,7 @@ function drawO(){
       <p style="margin:6px 0;color:var(--muted)"><b>${esc(formatOrderDate(o))}</b></p>
       <p><b>${o.c ? esc(o.c.n) : ''}</b> - ${o.c ? esc(o.c.p) : ''}${o.c && o.c.p2 ? ` / ${esc(o.c.p2)}` : ''}</p>
       <p>${o.c ? esc(o.c.g) : ''} - ${o.c ? esc(o.c.a) : ''}</p>
+      ${typeof customerHistoryChip === 'function' ? customerHistoryChip(o) : ''}
       <div style="border-top:1px dashed #ddd;padding-top:8px">${itemsHtml}</div>
       ${paymentHtml}
       ${noteHtml}
@@ -120,6 +243,7 @@ function drawO(){
         <button class="btn green small" onclick="setSt('${o.id}','ok')">تم التسليم</button>
         <button class="btn small" style="background:#b45309;color:#fff" onclick="setSt('${o.id}','ret')">مرتجع</button>
         <button class="btn red small" onclick="setSt('${o.id}','cancel')">إلغاء الطلب</button>
+        ${(typeof orderWaLink === 'function' && orderWaLink(o)) ? `<a class="btn green small" style="margin:0" href="${esc(orderWaLink(o))}" target="_blank" rel="noopener">💬 واتساب</a>` : ''}
         <button class="btn gray small" style="background:#444; color:#fff" onclick="printInvoice('${o.id}')">طباعة</button>
         <button class="btn red small" style="background:#dc3545" onclick="delOrder('${o.id}')">حذف</button>
       </div>
