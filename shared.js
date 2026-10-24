@@ -6,6 +6,15 @@
 
 let SET={"name":"yourplace_مكانك","wa":"2010","theme":"#2563EB","gov":[{"n":"العاصمة","v":50}],"categories":[{"id":"all","n":"الكل"},{"id":"electronics","n":"إلكترونيات"},{"id":"fashion","n":"أزياء"},{"id":"cosmetics","n":"تجميل"}],"cpOn":false,"cpCode":"SALE50","cpVal":10,"skipCart":false,"clientNote":"","fakeCounterOn":true,"fakeCounterNum":15,"countDownOn":true,"countDownHours":2,"countDownMins":30,"countDownSecs":0,"countDownText":"ينتهي العرض الخاص خلال","fbPixelId":"","tiktokPixelId":"","vodafoneOn":false,"vodafoneNumber":"","shippingPolicyOn":false,"shippingPolicyText":"","altPhoneOn":false};
 let PROD=[];
+// ?fresh=1 في الرابط = امسح كاش الإعدادات والمنتجات والأيقونة وحمّل من Firebase من جديد.
+// للمالك بعد ما يغيّر الشعار أو الأسعار: المتجر بيحتفظ بالبيانات 30 دقيقة في المتصفح
+// (و Ctrl+F5 لوحده مابيمسح الكاش ده).
+try{
+  if(/[?&]fresh=1(&|$)/.test(location.search)){
+    ['cache_settings','cache_settings_at','cache_settings_adv_header','cache_settings_adv_at',
+     'cache_products','cache_products_at','favicon_cache','favicon_sig'].forEach(k => localStorage.removeItem(k));
+  }
+}catch(e){}
 // عرض فوري من الكاش (لو موجود) لحد ما البيانات الحية توصل من Firebase،
 // ده بيقلل زمن ظهور أول محتوى (LCP) بشكل كبير على الزيارات المتكررة
 try{
@@ -602,7 +611,7 @@ function initApp(){
 
     function applySettingsToDOM(){
       applyTheme(SET.theme);
-      if(typeof applyFavicon === 'function') applyFavicon(SET.logoImg); // شعار المتجر كأيقونة للتبويب
+      if(typeof applyFavicon === 'function') applyFavicon(SET.faviconImg || SET.logoImg); // أيقونة التبويب (من الإعدادات) أو الشعار
       let sNameEl = document.getElementById('sName');
       if(sNameEl){
         if(SET.logoImg){

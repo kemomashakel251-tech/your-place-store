@@ -65,6 +65,53 @@ if($el('logoImgInput')){
   });
 }
 
+// أيقونة التبويب (Favicon): صورة مربعة 128×128 PNG بتتقص من نص الصورة المرفوعة.
+// TMP_FAVICON_IMG: null = مفيش تعديل معلّق، '' = امسح الأيقونة، غير كده = أيقونة جديدة.
+let TMP_FAVICON_IMG = null;
+
+function drawFaviconPreview(){
+  let box = $el('faviconImgPreview');
+  if(!box) return;
+  let current = TMP_FAVICON_IMG !== null ? TMP_FAVICON_IMG : (SET.faviconImg || '');
+  box.innerHTML = current
+    ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+         <img src="${current}" style="width:48px;height:48px;border-radius:8px;border:1px solid #eee;background:#f7f8fa;object-fit:contain">
+         <button type="button" class="btn small red" style="margin:0" onclick="removeFaviconImg()">حذف الأيقونة</button>
+       </div>`
+    : `<p style="color:var(--muted);font-size:13px;margin:0">مفيش أيقونة مرفوعة - ${SET.logoImg ? 'هنستخدم الشعار كأيقونة' : 'المتصفح هيعرض الكوكب الافتراضي'}</p>`;
+}
+
+function removeFaviconImg(){
+  TMP_FAVICON_IMG = '';
+  $set('faviconImgInput', 'value', '');
+  drawFaviconPreview();
+}
+
+if($el('faviconImgInput')){
+  $el('faviconImgInput').addEventListener('change', function(e){
+    let file = e.target.files[0];
+    if(!file) return;
+    let reader = new FileReader();
+    reader.onload = function(ev){
+      let img = new Image();
+      img.onload = function(){
+        let size = 128;
+        let canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        let ctx = canvas.getContext('2d');
+        // "cover": نقص مربع من نص الصورة بدل ما نشوّهها
+        let side = Math.min(img.width, img.height);
+        let sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        TMP_FAVICON_IMG = canvas.toDataURL('image/png');
+        drawFaviconPreview();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function drawS(){
   $set('stName','value',SET.name); $set('stWa','value',SET.wa); $set('stColor','value',SET.theme||'#2563EB');
   $set('cpOn','checked',SET.cpOn); $set('cpCode','value',SET.cpCode); $set('cpVal','value',SET.cpVal);
@@ -116,6 +163,8 @@ function drawS(){
 
   TMP_LOGO_IMG = null;
   drawLogoPreview();
+  TMP_FAVICON_IMG = null;
+  drawFaviconPreview();
 
   drawCategorySettingsList();
 }
@@ -175,12 +224,15 @@ async function saveS(){
   SET.tiktokUrl=$val('tiktokUrl').trim();
 
   if(TMP_LOGO_IMG !== null) SET.logoImg = TMP_LOGO_IMG;
-  if(typeof applyFavicon === 'function') applyFavicon(SET.logoImg);
+  if(TMP_FAVICON_IMG !== null) SET.faviconImg = TMP_FAVICON_IMG;
+  // الأيقونة المرفوعة أولًا، ولو مفيش نستخدم الشعار
+  if(typeof applyFavicon === 'function') applyFavicon(SET.faviconImg || SET.logoImg);
 
   applyTheme(SET.theme); saveAll(); $set('sName','innerText',SET.name);
 
   await setDoc(doc(db, "settings", "main"), SET);
   await setDoc(doc(db, "settings", "advanced"), {headerCode: $val('headerCode')}, {merge: true});
+  invalidateStoreCache('settings');
 
   renderCategoriesDOM();
   checkStoreUpdates();

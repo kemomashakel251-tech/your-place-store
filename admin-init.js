@@ -71,7 +71,7 @@ import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then((
     if(snap.exists()){ 
       SET = snap.data(); 
       applyTheme(SET.theme); 
-      if(typeof applyFavicon === 'function') applyFavicon(SET.logoImg); 
+      if(typeof applyFavicon === 'function') applyFavicon(SET.faviconImg || SET.logoImg); 
       sName.innerText = SET.name; 
       waFloat.href = `https://wa.me/${SET.wa}`; 
       renderCategoriesDOM();
