@@ -113,6 +113,7 @@ if($el('faviconImgInput')){
 }
 
 function drawS(){
+  $set('senderName','value',SET.senderName||'مكانك_your place'); $set('senderPhone','value',SET.senderPhone||'01044941885');
   $set('stName','value',SET.name); $set('stWa','value',SET.wa); $set('stColor','value',SET.theme||'#2563EB');
   $set('cpOn','checked',SET.cpOn); $set('cpCode','value',SET.cpCode); $set('cpVal','value',SET.cpVal);
   $set('waFloat','href',`https://wa.me/${SET.wa}`);
@@ -191,6 +192,7 @@ function addPhone(){
 }
 
 async function saveS(){
+  SET.senderName=$val('senderName','').trim(); SET.senderPhone=$val('senderPhone','').trim();
   SET.name=$val('stName',SET.name); SET.wa=$val('stWa',SET.wa); SET.theme=$val('stColor',SET.theme);
   SET.cpOn=$checked('cpOn',SET.cpOn); SET.cpCode=$val('cpCode',SET.cpCode); SET.cpVal=+$val('cpVal',SET.cpVal)||0;
   SET.skipCart=$checked('skipCart',SET.skipCart); SET.clientNote=$val('clientNote',SET.clientNote);

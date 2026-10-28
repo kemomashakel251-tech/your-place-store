@@ -232,6 +232,7 @@ function drawO(){
       <p><b>${o.c ? esc(o.c.n) : ''}</b> - ${o.c ? esc(o.c.p) : ''}${o.c && o.c.p2 ? ` / ${esc(o.c.p2)}` : ''}</p>
       <p>${o.c ? esc(o.c.g) : ''} - ${o.c ? esc(o.c.a) : ''}</p>
       ${typeof customerHistoryChip === 'function' ? customerHistoryChip(o) : ''}
+      ${orderIssuesHtml(o)}
       <div style="border-top:1px dashed #ddd;padding-top:8px">${itemsHtml}</div>
       ${paymentHtml}
       ${noteHtml}
@@ -253,77 +254,63 @@ function drawO(){
   oList.innerHTML = html;
 }
 
-async function setShipped(id){
-  let o = ORD.find(x=>x.id==id);
-  if(o){ 
-    o.st = 'ship'; 
-    await updateDoc(doc(db, "orders", id), {st: 'ship'});
-    toast('تم الشحن'); 
-  }
+// ================= المخزون: بيتخصم عند التأكيد، ويرجع عند الإلغاء/المرتجع =================
+// الطلب الجديد من المتجر بيتسجّل بـ stockDeducted:false (المتصفح مابيعدّلش المخزون — ده بيتم هنا).
+// الطلبات القديمة (قبل التعديل ده) مفيهاش الحقل: بنعتبرها اتخصمت لو مش ملغية/مرتجعة.
+const STOCK_HOLD_STATUSES = ['conf', 'ship', 'ok'];      // الحالات اللي المخزون فيها لازم يكون متخصوم
+const STOCK_RELEASE_STATUSES = ['cancel', 'ret'];        // الحالات اللي بترجّع المخزون
+
+function isStockDeducted(o){
+  if(o.stockDeducted === true) return true;
+  if(o.stockDeducted === false) return false;
+  return !STOCK_RELEASE_STATUSES.includes(o.st);          // طلب قديم
 }
 
-async function setSt(id,st){
-  let o = ORD.find(x=>x.id==id);
-  if(!o) return;
-  // الإلغاء والمرتجع الاتنين بيرجّعوا القطع للمخزون — مرة واحدة بس
-  // (لو الطلب ملغي وبعدين اتحول لمرتجع أو العكس، المخزون مايترجعش تاني).
-  let releasesStock = (st === 'cancel' || st === 'ret');
-  let alreadyReleased = (o.st === 'cancel' || o.st === 'ret');
-  if(releasesStock && !alreadyReleased){
-    await returnStockForOrder(o);
-    o.st = st;
-    await updateDoc(doc(db, "orders", id), {st: st});
-    toast(st === 'ret' ? 'تم تسجيل المرتجع وإرجاع المخزون للمنتجات' : 'تم الإلغاء وإرجاع المخزون للمنتجات');
-  } else {
-    o.st = st;
-    await updateDoc(doc(db, "orders", id), {st: st});
-    toast(alreadyReleased && !releasesStock
-      ? 'تم التحديث — تنبيه: المخزون اتّرجع قبل كده ومش هيتخصم تاني، عدّله يدوي لو محتاج'
-      : 'تم التحديث');
-  }
-}
-
-async function returnStockForOrder(o){
+// sign = +1 رجّع المخزون، -1 اخصم من المخزون. بتشتغل جوه transaction ذرّية لكل منتج
+// (بتقرا آخر نسخة وقت التنفيذ). لو الخصم هيطلّع المخزون بالسالب بنثبّته على صفر ونرجّع
+// أسماء المنتجات الناقصة عشان تتحذّر.
+async function adjustStockForOrder(o, sign){
   let touchedIds = [];
+  let shortages = new Set();
+  let failed = [];
   for(let item of (o.items || [])){
-    // بنرجّع المخزون جوه معاملة (transaction) ذرّية: بتقرا آخر نسخة من المنتج
-    // في قاعدة البيانات وقت التنفيذ نفسه وتزود عليها، فمحدش يمسح تعديل حصل
-    // في نفس اللحظة على نفس المنتج (بيع أو إلغاء تاني) — ده بيشمل المخزون
-    // الكلي والألوان والمقاسات والميزة الإضافية المخصصة كلهم مع بعض.
     try {
       await runTransaction(db, async (tx) => {
         let ref = doc(db, "products", item.id);
         let snap = await tx.get(ref);
         if(!snap.exists()) return;
         let data = snap.data();
-        let update = { stock: (data.stock || 0) + (item.q || 0) };
+        let apply = (cur, delta) => {
+          let next = (cur || 0) + sign * (delta || 0);
+          if(next < 0){ shortages.add(item.n || item.id); next = 0; }
+          return next;
+        };
+        let update = { stock: apply(data.stock, item.q) };
 
         if(item.colors){
-          let newStockByColor = {...(data.stockByColor || {})};
-          for(let c in item.colors){ if(item.colors[c]) newStockByColor[c] = (newStockByColor[c] || 0) + item.colors[c]; }
-          update.stockByColor = newStockByColor;
+          let m = {...(data.stockByColor || {})};
+          for(let c in item.colors){ if(item.colors[c]) m[c] = apply(m[c], item.colors[c]); }
+          update.stockByColor = m;
         }
         if(item.sizes){
-          let newStockBySize = {...(data.stockBySize || {})};
-          for(let s in item.sizes){ if(item.sizes[s]) newStockBySize[s] = (newStockBySize[s] || 0) + item.sizes[s]; }
-          update.stockBySize = newStockBySize;
+          let m = {...(data.stockBySize || {})};
+          for(let s in item.sizes){ if(item.sizes[s]) m[s] = apply(m[s], item.sizes[s]); }
+          update.stockBySize = m;
         }
         if(item.custom && data.customVariants){
           update.customVariants = data.customVariants.map(cv => {
-            if(item.custom[cv.name]) return {...cv, stock: (cv.stock || 0) + item.custom[cv.name]};
+            if(item.custom[cv.name]) return {...cv, stock: apply(cv.stock, item.custom[cv.name])};
             return cv;
           });
         }
-
         tx.set(ref, update, {merge: true});
       });
       touchedIds.push(item.id);
-    } catch(e){ console.error(e); }
+    } catch(e){ console.error(e); failed.push(item.n || item.id); }
   }
 
-  // بدل ما نعمل getDocs لكل منتجات المتجر عشان نحدّث مخزون كام منتج بس،
-  // بنجيب المنتجات اللي فعلاً اتأثرت بالإلغاء ده بس (getDoc مفرد لكل واحد)
-  // ونحدّث نسختها المحلية في PROD — فرق كبير في عدد القراءات مع كل إلغاء طلب.
+  // بدل ما نعمل getDocs لكل المنتجات، بنجيب المنتجات اللي اتأثرت بس (getDoc لكل واحد)
+  // ونحدّث نسختها المحلية في PROD.
   for(let id of touchedIds){
     try{
       let snap = await getDoc(doc(db, "products", id));
@@ -336,6 +323,110 @@ async function returnStockForOrder(o){
   }
   if(document.getElementById('products').classList.contains('on')) drawP();
   if(document.getElementById('dashboard').classList.contains('on')) drawDashboard();
+  return { shortages: [...shortages], failed };
+}
+async function returnStockForOrder(o){ return adjustStockForOrder(o, +1); }
+
+// ================= فحص الطلب قبل التأكيد (⚠️) =================
+// الزائر ممكن يبعت طلب بإجمالي أو أسعار مزيفة، فبنقارن الطلبات اللي لسه ماتأكدتش
+// بأسعار المنتجات الحالية وبحساب الإجمالي، ونظهر تحذير قبل ما تأكدها.
+const ISSUE_CHECK_STATUSES = ['new', 'noans', 'conf'];
+function currentUnitPrice(p, qty){
+  let price = p.disc && p.disc < p.v ? p.disc : p.v;
+  if(p.bulk_on && qty >= p.bulk_qty) price = price * (1 - p.bulk_disc / 100);
+  return price;
+}
+function orderIssues(o){
+  if(!ISSUE_CHECK_STATUSES.includes(o.st)) return [];
+  let r = (n) => Math.round(Number(n) * 100) / 100;
+  let issues = [];
+  let items = o.items || [];
+  let sub = items.reduce((t, i) => t + (Number(i.v) || 0) * (Number(i.q) || 0), 0);
+  let expected = sub + (Number(o.ship) || 0) - (Number(o.coupon) || 0);
+  if(!(Math.abs(expected - Number(o.tot)) <= 1)){
+    issues.push(`الإجمالي المسجل (${r(o.tot)}) مش بيساوي مجموع الأصناف + الشحن − الكوبون (${r(expected)})`);
+  }
+  items.forEach(i => {
+    let q = Number(i.q), v = Number(i.v);
+    if(!(q > 0) || !Number.isInteger(q)) issues.push(`كمية "${i.n}" غير صحيحة (${i.q})`);
+    if(!(v >= 0)) issues.push(`سعر "${i.n}" غير صحيح (${i.v})`);
+  });
+  if(PROD.length){
+    items.forEach(i => {
+      let p = PROD.find(x => x.id == i.id);
+      if(!p){ issues.push(`المنتج "${i.n}" مش موجود أو اتحذف`); return; }
+      let cur = currentUnitPrice(p, Number(i.q));
+      if(Math.abs(cur - Number(i.v)) > 0.5) issues.push(`سعر "${i.n}" في الطلب (${r(i.v)}) غير سعره الحالي (${r(cur)})`);
+      if(p.maxQty && Number(i.q) > p.maxQty) issues.push(`كمية "${i.n}" (${i.q}) أكبر من الحد الأقصى (${p.maxQty})`);
+      if(!isStockDeducted(o) && Number(i.q) > (p.stock || 0)) issues.push(`كمية "${i.n}" (${i.q}) أكبر من المخزون المتاح (${p.stock || 0})`);
+    });
+  }
+  return issues;
+}
+function orderIssuesHtml(o){
+  let issues = orderIssues(o);
+  if(!issues.length) return '';
+  return `<div style="margin:6px 0;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:700;background:#f8d7da;color:#842029">⚠️ راجع الطلب ده قبل ما تأكده:<ul style="margin:4px 18px 0">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}
+
+// ================= تغيير حالة الطلب =================
+async function setShipped(id){ return setSt(id, 'ship'); }
+
+async function setSt(id, st){
+  let o = ORD.find(x => x.id == id);
+  if(!o) return;
+  let deducted = isStockDeducted(o);
+  let wantsHold = STOCK_HOLD_STATUSES.includes(st);
+  let wantsRelease = STOCK_RELEASE_STATUSES.includes(st);
+
+  // قبل التأكيد لأول مرة: لو فيه تحذيرات (سعر/إجمالي مش مطابق...) اسأل الأول
+  if(wantsHold && ['new', 'noans'].includes(o.st)){
+    let issues = orderIssues(o);
+    if(issues.length && !confirm('⚠️ الطلب ده فيه تحذيرات:\n\n- ' + issues.join('\n- ') + '\n\nمتأكد إنك عايز تكمل؟')) return;
+  }
+
+  let patch = { st };
+  let msg = st === 'ship' ? 'تم الشحن' : 'تم التحديث';
+  let sign = 0;
+  let result = { shortages: [], failed: [] };
+
+  if(wantsRelease && deducted){
+    sign = +1;
+    result = await adjustStockForOrder(o, sign);
+    patch.stockDeducted = false;
+    msg = st === 'ret' ? 'تم تسجيل المرتجع وإرجاع المخزون للمنتجات' : 'تم الإلغاء وإرجاع المخزون للمنتجات';
+  } else if(wantsHold && !deducted){
+    sign = -1;
+    result = await adjustStockForOrder(o, sign);
+    patch.stockDeducted = true;
+    msg = 'تم التأكيد وخصم المخزون';
+  }
+
+  try{
+    await updateDoc(doc(db, "orders", id), patch);
+  }catch(e){
+    console.error(e);
+    if(sign) await adjustStockForOrder(o, -sign);   // نلغي تعديل المخزون لو الحالة ماتحفظتش
+    alert('تعذر تحديث حالة الطلب، حاول تاني');
+    return;
+  }
+  Object.assign(o, patch);
+
+  if(result.failed.length) alert('⚠️ تعذر تعديل مخزون: ' + result.failed.join('، ') + '\nعدّله يدويًا من صفحة المنتجات.');
+  if(result.shortages.length) msg += ' — تنبيه: المخزون مش كفاية لـ ' + result.shortages.join('، ');
+  toast(msg);
+}
+
+// بيانات المرسل اللي بتظهر في الفاتورة (من الإعدادات، ولو فاضية بنستخدم الافتراضي)
+const DEFAULT_SENDER_NAME = 'مكانك_your place';
+const DEFAULT_SENDER_PHONE = '01044941885';
+
+// طرق الدفع الإلكتروني المسجّلة على الطلب (فودافون كاش / إنستا باي) — فاضية = كاش عند الاستلام
+function invoicePaymentLabels(o){
+  let list = (o.payments && o.payments.length) ? o.payments
+    : (o.paymentScreenshot ? [{ method: o.paymentMethod || 'vodafone' }] : []);
+  let labels = list.map(p => p.method === 'instapay' ? 'إنستا باي' : 'فودافون كاش');
+  return Array.from(new Set(labels));
 }
 
 function printInvoice(id){
@@ -387,6 +478,10 @@ function printInvoice(id){
     </tr>`;
   }).join('');
 
+  let senderName = (SET.senderName && SET.senderName.trim()) || DEFAULT_SENDER_NAME;
+  let senderPhone = (SET.senderPhone && SET.senderPhone.trim()) || DEFAULT_SENDER_PHONE;
+  let paidLabels = invoicePaymentLabels(o);
+
   let totalAfterDiscounts = subtotal - couponDiscount; 
   let finalTotal = totalAfterDiscounts + shipping;
 
@@ -412,6 +507,8 @@ function printInvoice(id){
     <body>
       <h2>فاتورة مبيعات - ${esc(SET.name)}</h2>
       <div class="info">
+        <b>المرسل:</b> ${esc(senderName)} <br>
+        <b>رقم المرسل:</b> <span dir="ltr">${esc(senderPhone)}</span> <br>
         <b>رقم الطلب:</b> #${esc((o.orderNum || o.id).toString().slice(-6))} <br>
         <b>التاريخ:</b> ${esc(formatOrderDate(o))} <br>
         <b>العميل:</b> ${cName} <br>
@@ -436,6 +533,10 @@ function printInvoice(id){
         ${couponDiscount > 0 ? `<div style="color:green">خصم الكوبون: -${couponDiscount.toFixed(1)} جنيه</div>` : ''}
         <div>تكلفة الشحن: ${shipping.toFixed(1)} جنيه</div>
         <div class="total">الإجمالي النهائي: ${finalTotal.toFixed(1)} جنيه</div>
+        ${paidLabels.length
+          ? `<div style="color:#198754;font-weight:bold;margin-top:6px">✅ تم دفع المبلغ بالكامل (${esc(paidLabels.join(' + '))})</div>
+             <div class="total" style="color:#000">المطلوب تحصيله: 0 جنيه</div>`
+          : `<div class="total" style="color:#000;margin-top:6px">المطلوب تحصيله: ${finalTotal.toFixed(1)} جنيه (كاش عند الاستلام)</div>`}
       </div>
       <button class="btn-print" onclick="window.print()">طباعة</button>
     </body>
