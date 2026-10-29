@@ -429,6 +429,31 @@ function invoicePaymentLabels(o){
   return Array.from(new Set(labels));
 }
 
+// ---------- QR لكل منتج في الفاتورة (بيفتح صفحة المنتج في المتجر) ----------
+// الرابط من "رابط المتجر" في الإعدادات، ولو فاضي من مكان فتح لوحة التحكم (نفس الموقع).
+// لو اللوحة مفتوحة كملف على الجهاز (file://) مفيش رابط حقيقي، فمابنطبعش QR.
+function productPageUrl(id){
+  let base = (SET.storeUrl && SET.storeUrl.trim()) ? SET.storeUrl.trim() : location.href;
+  try{
+    base = base.replace(/[?#].*$/, '');
+    let last = base.split('/').pop();
+    if(!/\/$/.test(base) && !/\.[a-z0-9]+$/i.test(last)) base += '/';   // https://site.com/shop → https://site.com/shop/
+    let u = new URL('product.html?id=' + encodeURIComponent(id), base);
+    return /^https?:$/.test(u.protocol) ? u.href : '';
+  }catch(e){ return ''; }
+}
+
+// SVG للـ QR (مكتبة qrcode-generator): خلفية بيضا وهامش هادي حوالين الكود عشان يتقري صح
+function qrSvg(text){
+  if(!text || typeof qrcode !== 'function') return '';
+  try{
+    let qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 4, margin: 12, scalable: true }).replace('<svg ', '<svg shape-rendering="crispEdges" ');
+  }catch(e){ console.warn('QR failed', e); return ''; }
+}
+
 function printInvoice(id){
   let o = ORD.find(x=>x.id==id);
   if(!o) return alert('الطلب مش موجود');
@@ -475,6 +500,7 @@ function printInvoice(id){
       <td>${esc(qty)}</td>
       <td>${esc(price)} ج</td>
       <td>${esc(itemTotal)} ج</td>
+      <td class="qr">${qrSvg(productPageUrl(i.id)) || '-'}</td>
     </tr>`;
   }).join('');
 
@@ -500,6 +526,8 @@ function printInvoice(id){
         .info{text-align:right; line-height:2.2; font-size:15px; margin-bottom:20px; border:1px solid #eee; padding:15px; border-radius:8px}
         .summary{text-align:left; font-size:16px; margin-top:20px; border-top:2px solid #000; padding-top:15px; line-height:2}
         .total{font-size:20px; font-weight:bold; color:#2563EB}
+        td.qr{width:96px; padding:4px}
+        td.qr svg{width:84px; height:84px; display:block; margin:0 auto}
         .btn-print{margin-top:20px;padding:12px 25px;background:#444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:16px}
         @media print{ .btn-print{display:none} body{padding:0} }
       </style>
@@ -522,7 +550,7 @@ function printInvoice(id){
 
       <table>
         <thead>
-          <tr><th>المنتج</th><th>المقاس</th><th>اللون</th><th>ميزة إضافية</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr>
+          <tr><th>المنتج</th><th>المقاس</th><th>اللون</th><th>ميزة إضافية</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th><th>QR المنتج</th></tr>
         </thead>
         <tbody>${items}</tbody>
       </table>
