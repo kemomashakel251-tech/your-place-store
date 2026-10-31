@@ -72,6 +72,12 @@ function ensureMonthFilterUI(){
         <h3>القطع المباعة بالشهر</h3>
         <p id="statMonthQty" style="color:#0d6efd">0 قطعة</p>
       </div>
+      <div class="stat-card" style="border:2px solid #2563EB">
+        <h3>📈 اتجاه مبيعات المتجر</h3>
+        <p id="statStoreTrend">—</p>
+        <small id="statStoreTrendNote" style="display:block;color:var(--muted)"></small>
+        <div id="statStoreSpark" style="margin-top:6px"></div>
+      </div>
     </div>
 
     <h4 style="margin-top:26px">📊 الأداء والربح الحقيقي للشهر</h4>
@@ -180,6 +186,93 @@ function computeMonthPerformance(monthKey){
   return r;
 }
 
+// ================= اتجاه المبيعات (سهم ↗ ↘ →) لكل منتج وللمتجر =================
+// بنقارن الشهر المختار بالشهر اللي قبله. لو الشهر المختار هو الشهر الحالي (لسه ماخلصش)
+// بنقارنه بنفس الفترة من الشهر اللي فات (من أول الشهر لحد نفس اليوم) عشان المقارنة تبقى عادلة.
+function monthKeyOfDate(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function shiftMonthKey(key, delta){
+  let [y, m] = key.split('-').map(Number);
+  let d = new Date(y, m - 1 + delta, 1);
+  return monthKeyOfDate(d);
+}
+function lastMonthsKeys(key, n){
+  let keys = [];
+  for(let i = n - 1; i >= 0; i--) keys.push(shiftMonthKey(key, -i));
+  return keys;
+}
+
+// dir: up (↗ +١٠٪ أو أكتر) / down (↘ -١٠٪ أو أكتر) / flat (→) / new (🆕 ماكانش فيه مبيعات قبل كده) / none
+function trendOf(cur, prev){
+  if(!cur && !prev) return { dir: 'none', pct: null };
+  if(!prev) return { dir: 'new', pct: null };
+  let pct = Math.round((cur - prev) / prev * 100);
+  return { dir: pct >= 10 ? 'up' : (pct <= -10 ? 'down' : 'flat'), pct };
+}
+function trendHtml(t){
+  let map = {
+    up:   ['↗', '#198754'],
+    down: ['↘', '#dc3545'],
+    flat: ['→', '#6c757d'],
+    new:  ['🆕', '#0d6efd'],
+    none: ['—', '#999']
+  };
+  let [arrow, color] = map[t.dir];
+  let pct = t.pct === null ? '' : ` <small dir="ltr">${t.pct > 0 ? '+' : ''}${t.pct}%</small>`;
+  return `<span style="color:${color};font-weight:700;font-size:18px;white-space:nowrap">${arrow}${pct}</span>`;
+}
+
+// رسم خط صغير لآخر شهور (SVG جاهز، وفيه tooltip بأرقام كل شهر)
+function sparkSvg(keys, values){
+  let w = 78, h = 26, pad = 3;
+  let max = Math.max(...values, 1);
+  let step = (w - pad * 2) / Math.max(values.length - 1, 1);
+  let pts = values.map((v, i) => [pad + i * step, h - pad - (v / max) * (h - pad * 2)]);
+  let poly = pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  let last = pts[pts.length - 1];
+  let tip = keys.map((k, i) => AR_MONTHS[+k.split('-')[1] - 1] + ': ' + values[i]).join(' | ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"><title>${esc(tip)}</title>` +
+    `<polyline points="${poly}" fill="none" stroke="#2563EB" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.6" fill="#2563EB"/></svg>`;
+}
+
+// mode: 'active' (جديد + مؤكد + اتشحن + تم التسليم) أو 'ok' (المُسلَّمة فقط) — نفس اختيار "الأكثر مبيعًا"
+function computeMonthlyTrends(mode, monthKey, months, now){
+  months = months || 6;
+  now = now || new Date();
+  let allowed = mode === 'ok' ? ['ok'] : ACTIVE_STATUSES;
+  let keys = lastMonthsKeys(monthKey, months);
+  let prevKey = keys[keys.length - 2];
+  let aligned = monthKey === monthKeyOfDate(now);          // الشهر الحالي لسه ماخلصش
+  let cutoffDay = aligned ? now.getDate() : 31;
+  let byProduct = {};
+  let store = { series: {}, cur: 0, prev: 0 };
+  keys.forEach(k => { store.series[k] = 0; });
+
+  ORD.forEach(o => {
+    if(!allowed.includes(o.st)) return;
+    let d = getOrderDate(o);
+    if(!d) return;
+    let k = monthKeyOfDate(d);
+    if(!keys.includes(k)) return;
+    let inPrevWindow = (k === prevKey && d.getDate() <= cutoffDay);
+    let items = o.items || [];
+    let revenue = items.reduce((t, i) => t + (Number(i.v) || 0) * (Number(i.q) || 0), 0) - (Number(o.coupon) || 0);
+    store.series[k] += revenue;
+    if(k === monthKey) store.cur += revenue;
+    if(inPrevWindow) store.prev += revenue;
+    items.forEach(i => {
+      let q = Number(i.q) || 0;
+      if(!q) return;
+      let p = byProduct[i.id] = byProduct[i.id] || { name: i.n, series: {}, cur: 0, prev: 0 };
+      keys.forEach(kk => { if(p.series[kk] === undefined) p.series[kk] = 0; });
+      p.series[k] += q;
+      if(k === monthKey) p.cur += q;
+      if(inPrevWindow) p.prev += q;
+    });
+  });
+  return { keys, prevKey, aligned, cutoffDay, byProduct, store };
+}
+
 // المنتج / المقاس / اللون الأكثر مبيعًا.
 // mode 'active' = كل الطلبات الفعّالة (جديد + مؤكد + اتشحن + تم التسليم)
 // mode 'ok'     = المُسلَّمة فقط
@@ -228,6 +321,15 @@ function syncFinanceInputs(force){
   });
 }
 
+// 4 خانات في صف المنتج: الشهر المختار، الشهر اللي قبله، السهم، والخط الصغير
+function trendCells(trends, id){
+  let p = trends.byProduct[id];
+  if(!p) return '<td>0</td><td>0</td><td>' + trendHtml({ dir: 'none', pct: null }) + '</td><td>—</td>';
+  let t = trendOf(p.cur, p.prev);
+  let vals = trends.keys.map(k => p.series[k] || 0);
+  return `<td><b>${p.cur}</b></td><td>${p.prev}</td><td>${trendHtml(t)}</td><td>${sparkSvg(trends.keys, vals)}</td>`;
+}
+
 function drawDashboard(forceSync){
   ensureMonthFilterUI();
   populateMonthOptions();
@@ -263,6 +365,21 @@ function drawDashboard(forceSync){
 
   syncFinanceInputs(forceSync === true);
 
+  // ---- اتجاه المبيعات: المتجر + كل منتج (الشهر المختار مقابل اللي قبله) ----
+  let trendMode = document.getElementById('bestMode') ? bestMode.value : 'active';
+  let trends = computeMonthlyTrends(trendMode, selectedMonth);
+  let st = trendOf(trends.store.cur, trends.store.prev);
+  statStoreTrend.innerHTML = trendHtml(st);
+  statStoreTrendNote.innerText = `${Math.round(trends.store.cur)} جنيه مقابل ${Math.round(trends.store.prev)} جنيه`;
+  statStoreSpark.innerHTML = sparkSvg(trends.keys, trends.keys.map(k => Math.round(trends.store.series[k])));
+  let trendNoteEl = document.getElementById('dashTrendNote');
+  if(trendNoteEl){
+    trendNoteEl.innerText = (trends.aligned
+      ? `المقارنة: ${AR_MONTHS[+selectedMonth.split('-')[1] - 1]} (لحد النهارده) مقابل نفس الفترة (١–${trends.cutoffDay}) من الشهر اللي قبله.`
+      : `المقارنة: ${AR_MONTHS[+selectedMonth.split('-')[1] - 1]} كامل مقابل الشهر اللي قبله كامل.`) +
+      ` الأرقام بالقطع، حسب: ${trendMode === 'ok' ? 'الطلبات المُسلَّمة فقط' : 'الطلبات الفعّالة'}. غيّر الشهر من قايمة "إحصائيات شهر معين".`;
+  }
+
   // ---- الإجمالي الكلي (كل الأوقات) ----
   let totalSales = 0; let totalProfits = 0; let totalSoldQty = 0; let productStats = {};
   PROD.forEach(p => { productStats[p.id] = { n: p.n, currentStock: p.stock, soldQty: 0, revenue: 0, profit: 0 }; });
@@ -291,6 +408,33 @@ function drawDashboard(forceSync){
   statProfProfits.innerText = totalProfits + ` ${i18n[LANG].currency}`;
   statSoldQty.innerText = totalSoldQty + ` ${i18n[LANG].pcs}`;
   statVisits.innerText = STORE_VISITS + ' زيارة';
+
+  // ---- توزيع الطلبات حسب الحالة + المبيعات/الربح المتوقعين ----
+  // "إجمالي المبيعات" و"صافي الأرباح" فوق بيحسبوا الطلبات اللي حالتها "تم التسليم" بس
+  // (المبيعات المحققة). عشان أي تغيير حالة يبان فورًا، بنعرض كمان الطلبات اللي لسه
+  // في الطريق (جديد / تم التأكيد / اتشحن) كمبيعات متوقعة، وعدد الطلبات في كل حالة.
+  let statusCounts = {};
+  let pendingSales = 0, pendingCost = 0, pendingQty = 0, pendingOrders = 0;
+  ORD.forEach(o => {
+    statusCounts[o.st] = (statusCounts[o.st] || 0) + 1;
+    if(['new','conf','ship'].includes(o.st)){
+      pendingOrders++;
+      let items = o.items || [];
+      pendingSales += items.reduce((t,i) => t + (Number(i.v)||0) * (Number(i.q)||0), 0) - (Number(o.coupon)||0);
+      pendingCost  += items.reduce((t,i) => t + (Number(i.cost)||0) * (Number(i.q)||0), 0);
+      pendingQty   += items.reduce((t,i) => t + (Number(i.q)||0), 0);
+    }
+  });
+  let chipsEl = document.getElementById('statusBreakdown');
+  if(chipsEl){
+    chipsEl.innerHTML = Object.keys(ORDER_STATUS).map(k =>
+      `<span class="badge ${ORDER_STATUS[k].cls}">${ORDER_STATUS[k].label}: ${statusCounts[k] || 0}</span>`
+    ).join('');
+  }
+  let setTxt = (id, txt) => { let el = document.getElementById(id); if(el) el.innerText = txt; };
+  setTxt('statPendingSales', money(pendingSales));
+  setTxt('statPendingQty', `${pendingOrders} طلب · ${pendingQty} ${i18n[LANG].pcs}`);
+  setTxt('statPendingProfit', money(pendingSales - pendingCost));
 
   // ---- الأكثر مبيعًا (كل الأوقات) ----
   let best = computeBest(document.getElementById('bestMode') ? bestMode.value : 'active');
@@ -321,8 +465,9 @@ function drawDashboard(forceSync){
       <td style="color:#0d6efd"><b>${s.soldQty}</b></td>
       <td>${s.revenue}</td>
       <td style="color:var(--green)"><b>${s.profit}</b></td>
+      ${trendCells(trends, id)}
     </tr>`;
-  }).join('') || '<tr><td colspan="6">-</td></tr>';
+  }).join('') || '<tr><td colspan="10">-</td></tr>';
 
   let colorRows = [];
   let sizeRows = [];

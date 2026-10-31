@@ -430,15 +430,27 @@ function invoicePaymentLabels(o){
 }
 
 // ---------- QR لكل منتج في الفاتورة (بيفتح صفحة المنتج في المتجر) ----------
-// الرابط من "رابط المتجر" في الإعدادات، ولو فاضي من مكان فتح لوحة التحكم (نفس الموقع).
-// لو اللوحة مفتوحة كملف على الجهاز (file://) مفيش رابط حقيقي، فمابنطبعش QR.
+// الرابط من "رابط المتجر" في الإعدادات. ولو فاضي بنبنيه من مكان فتح لوحة التحكم: آخر جزء
+// في العنوان (admin أو admin.html) بيتبدّل بـ product.html في نفس المكان.
+// ملاحظات: لو اللوحة مفتوحة من عنوان محلي (localhost أو 192.168...) أو كملف على الجهاز،
+// الموبايل مش هيقدر يفتح الرابط، فمابنطبعش QR وبنظهر تنبيه (ولازم تكتب رابط المتجر الحقيقي).
+function isLocalHost(h){
+  return h === 'localhost' || h === '[::1]' || /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h)
+    || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /\.local$/.test(h);
+}
 function productPageUrl(id){
-  let base = (SET.storeUrl && SET.storeUrl.trim()) ? SET.storeUrl.trim() : location.href;
+  let explicit = SET.storeUrl && SET.storeUrl.trim();
   try{
-    base = base.replace(/[?#].*$/, '');
-    let last = base.split('/').pop();
-    if(!/\/$/.test(base) && !/\.[a-z0-9]+$/i.test(last)) base += '/';   // https://site.com/shop → https://site.com/shop/
-    let u = new URL('product.html?id=' + encodeURIComponent(id), base);
+    let u;
+    if(explicit){
+      let base = explicit.replace(/[?#].*$/, '');
+      let last = base.split('/').pop();
+      if(!/\/$/.test(base) && !/\.[a-z0-9]+$/i.test(last)) base += '/';   // https://site.com/shop → https://site.com/shop/
+      u = new URL('product.html?id=' + encodeURIComponent(id), base);
+    } else {
+      u = new URL('product.html?id=' + encodeURIComponent(id), location.href);
+      if(isLocalHost(u.hostname)) return '';
+    }
     return /^https?:$/.test(u.protocol) ? u.href : '';
   }catch(e){ return ''; }
 }
@@ -508,6 +520,15 @@ function printInvoice(id){
   let senderPhone = (SET.senderPhone && SET.senderPhone.trim()) || DEFAULT_SENDER_PHONE;
   let paidLabels = invoicePaymentLabels(o);
 
+  // قسم للمراجعة على الشاشة بس (مش بيتطبع): روابط الـ QR عشان تضغط عليها وتتأكد إنها بتفتح،
+  // وتنبيه لو مفيش رابط حقيقي للمتجر.
+  let qrLinks = (o.items || []).map(i => ({ n: i.n, url: productPageUrl(i.id) }));
+  let qrReviewHtml = `<div class="no-print" style="margin-top:24px;padding:12px;border:1px dashed #999;border-radius:8px;font-size:13px;text-align:right;color:#444">
+      ${qrLinks.some(x => !x.url) ? '<div style="background:#fff3cd;color:#664d03;padding:8px;border-radius:6px;margin-bottom:8px">⚠️ مفيش QR لبعض المنتجات لأن اللوحة مفتوحة من عنوان محلي أو ملف على الجهاز (الموبايل مش هيفتحه). اكتب رابط المتجر الحقيقي في الإعدادات ← "رابط المتجر" وجرّب تاني.</div>' : ''}
+      <b>روابط الـ QR (للمراجعة فقط، مش بتتطبع):</b>
+      <ul style="margin:6px 18px 0">${qrLinks.map(x => `<li>${esc(x.n)}: ${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" dir="ltr">${esc(x.url)}</a>` : '—'}</li>`).join('')}</ul>
+    </div>`;
+
   let totalAfterDiscounts = subtotal - couponDiscount; 
   let finalTotal = totalAfterDiscounts + shipping;
 
@@ -529,7 +550,7 @@ function printInvoice(id){
         td.qr{width:96px; padding:4px}
         td.qr svg{width:84px; height:84px; display:block; margin:0 auto}
         .btn-print{margin-top:20px;padding:12px 25px;background:#444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:16px}
-        @media print{ .btn-print{display:none} body{padding:0} }
+        @media print{ .btn-print,.no-print{display:none} body{padding:0} }
       </style>
     </head>
     <body>
@@ -566,6 +587,7 @@ function printInvoice(id){
              <div class="total" style="color:#000">المطلوب تحصيله: 0 جنيه</div>`
           : `<div class="total" style="color:#000;margin-top:6px">المطلوب تحصيله: ${finalTotal.toFixed(1)} جنيه (كاش عند الاستلام)</div>`}
       </div>
+      ${qrReviewHtml}
       <button class="btn-print" onclick="window.print()">طباعة</button>
     </body>
     </html>
