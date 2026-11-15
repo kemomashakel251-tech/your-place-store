@@ -245,6 +245,40 @@
   <input type="text" id="searchOrder" placeholder="ابحث برقم الطلب او اسم العميل او الموبايل..." 
   style="width:100%;padding:12px 14px;margin-bottom:15px;border-radius:10px;border:1px solid #ddd;font-size:16px">
   <button class="btn gray" style="margin-bottom:15px;background:#444" onclick="printAllOrders()">طباعة كل الطلبات</button>
+
+  <details id="exportBox" style="margin-bottom:15px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px">
+    <summary style="cursor:pointer;font-weight:700">📥 تصدير الطلبات إلى Excel (يوميًا أو كل يومين)</summary>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">
+      <select id="expPeriod" style="max-width:240px;margin:0">
+        <option value="today">طلبات النهارده</option>
+        <option value="yesterday">طلبات امبارح</option>
+        <option value="last2">آخر يومين (النهارده وامبارح)</option>
+        <option value="last7">آخر ٧ أيام</option>
+        <option value="month">الشهر الحالي</option>
+        <option value="sinceLast">من آخر تصدير (الجديد بس)</option>
+        <option value="all">كل الطلبات</option>
+        <option value="custom">فترة مخصصة...</option>
+      </select>
+      <span id="expCustom" style="display:none;align-items:center;gap:6px">
+        من <input type="date" id="expFrom" style="margin:0;max-width:165px">
+        إلى <input type="date" id="expTo" style="margin:0;max-width:165px">
+      </span>
+      <select id="expStatus" style="max-width:170px;margin:0">
+        <option value="all">كل الحالات</option>
+        <option value="new">جديد</option>
+        <option value="noans">لم يرد</option>
+        <option value="conf">تم التأكيد</option>
+        <option value="ship">اتشحن</option>
+        <option value="ok">تم التسليم</option>
+        <option value="ret">مرتجع</option>
+        <option value="cancel">ملغي</option>
+      </select>
+      <button class="btn green small" style="margin:0" onclick="exportOrdersExcel()">📥 تحميل Excel</button>
+    </div>
+    <p id="expPreview" style="margin:10px 0 0;color:var(--muted)"></p>
+    <p style="margin:6px 0 0;color:var(--muted);font-size:13px">الملف بيتحفظ على جهازك وتقدر تبعته واتساب أو إيميل لأي حد، وبيتفتح في Excel وGoogle Sheets. "من آخر تصدير" بيجيب الطلبات اللي اتضافت بعد آخر ملف نزّلته من الجهاز ده.</p>
+  </details>
+
   <div id="oList">مفيش طلبات</div>
 </div>
 
@@ -639,6 +673,7 @@
 <script src="admin-settings.js"></script>
 <script src="admin-customers.js"></script>
 <script src="admin-backup.js"></script>
+<script src="admin-export.js"></script>
 <script src="admin-init.js"></script>
 </body>
 </html>

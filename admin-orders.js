@@ -166,6 +166,7 @@ function setOrderFilter(f){
 }
 
 function drawO(){
+  if(typeof updateExportPreview === 'function') updateExportPreview();
   const search = document.getElementById('searchOrder').value.toLowerCase();
   
   const filteredORD = ORD.filter(o => {
