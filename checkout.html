@@ -10,8 +10,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght=400;600;700&display=swap"></noscript>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="style.css">
 
 <!-- Facebook Pixel Code (initialized later with the ID saved in store settings) -->
@@ -224,39 +226,24 @@ async function finish(){
       if(CART[id]>p.stock){ toast(`${i18n[LANG].max_stock} ${p.stock}`); if(btn){btn.disabled=false;btn.innerText='تأكيد الطلب';} return; }
       items.push({id:id,n:p.n,d:p.d||'',v:price,q:CART[id],cost:p.cost||0,sizes:opt.sizes,colors:opt.colors,custom:opt.custom||{}});
 
-      // خصم الكمية المطلوبة من المخزون جوه معاملة (transaction) ذرّية: بتقرا
-      // آخر نسخة من المنتج في قاعدة البيانات وقت التنفيذ نفسه وتخصم منها،
-      // فلو طلبين جم في نفس اللحظة على نفس المنتج، فايربيز بيعيد المحاولة
-      // تلقائيًا عشان محدش يمسح خصم التاني — ده بيشمل المخزون الكلي والألوان
-      // والمقاسات والميزة الإضافية المخصصة كلهم مع بعض.
-      await window.runTransaction(db, async (tx) => {
-        let ref = window.doc(db, "products", id);
-        let snap = await tx.get(ref);
-        if(!snap.exists()) throw new Error('المنتج غير موجود');
-        let data = snap.data();
-        if(CART[id] > (data.stock || 0)) throw new Error(`${i18n[LANG].max_stock}: ${data.stock || 0}`);
-        let update = { stock: (data.stock || 0) - CART[id] };
-
-        let newStockByColor = {...(data.stockByColor || {})};
-        for(let c in opt.colors){ if(opt.colors[c]) newStockByColor[c] = (newStockByColor[c] || 0) - opt.colors[c]; }
-        if(Object.keys(newStockByColor).length) update.stockByColor = newStockByColor;
-
-        let newStockBySize = {...(data.stockBySize || {})};
-        for(let s in opt.sizes){ if(opt.sizes[s]) newStockBySize[s] = (newStockBySize[s] || 0) - opt.sizes[s]; }
-        if(Object.keys(newStockBySize).length) update.stockBySize = newStockBySize;
-
-        if(data.customVariants){
-          update.customVariants = data.customVariants.map(cv => {
-            if(opt.custom && opt.custom[cv.name]) return {...cv, stock: (cv.stock || 0) - opt.custom[cv.name]};
-            return cv;
-          });
-        }
-
-        tx.set(ref, update, {merge: true});
-      });
+      // تحقق من المخزون الحالي (قراءة بس). المتصفح مابيكتبش على المنتجات خالص — لو سمحنا
+      // للزائر يعدّل المخزون، أي حد يقدر يصفّره من الكونسول. الخصم الفعلي بيتم من لوحة
+      // التحكم لما الطلب يتأكد (stockDeducted:false على الطلب الجديد بيوضّح ده).
+      let freshSnap = await window.getDoc(window.doc(db, "products", id));
+      if(!freshSnap.exists()) throw new Error('المنتج غير موجود');
+      let fresh = freshSnap.data();
+      if(CART[id] > (fresh.stock || 0)) throw new Error(`${i18n[LANG].max_stock}: ${fresh.stock || 0}`);
+      for(let sz in opt.sizes){
+        let have = fresh.stockBySize ? fresh.stockBySize[sz] : undefined;
+        if(opt.sizes[sz] && typeof have === 'number' && opt.sizes[sz] > have) throw new Error(`المقاس ${sz} متبقي منه ${Math.max(have, 0)} فقط (${p.n})`);
+      }
+      for(let cl in opt.colors){
+        let have = fresh.stockByColor ? fresh.stockByColor[cl] : undefined;
+        if(opt.colors[cl] && typeof have === 'number' && opt.colors[cl] > have) throw new Error(`اللون ${cl} متبقي منه ${Math.max(have, 0)} فقط (${p.n})`);
+      }
     }
 
-    let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
+    let newOrder = { id:Date.now(), date:new Date().toLocaleString('ar-EG'), items, subtotal:LAST.sub, bulkDiscount:LAST.bulkSave||0, coupon:LAST.sub*(COUPON/100), ship:LAST.ship, tot:LAST.tot, st:'new', stockDeducted:false, c:{n:cn.value,p:cp.value,p2:(SET.altPhoneOn?document.getElementById('cp2').value:''),a:ca.value,g:cg.options[cg.selectedIndex].text}};
 
     let noteParts = [];
     let custNoteVal = (document.getElementById('custNote').value || '').trim();
@@ -397,12 +384,12 @@ function renderCheckout(){
     colorSum = Object.values(opt.colors).reduce((a,b)=>a+b,0);
     customSum = Object.values(opt.custom).reduce((a,b)=>a+b,0);
 
-    let sizeHtml = p.sz && p.sz.length? `<div id="sizes-${id}" style="margin-top:10px;"><b>المقاسات:</b><br>`+ p.sz.map(s=>{
+    let sizeHtml = p.sz && p.sz.length? `<div id="sizes-${id}" style="margin-top:10px;"><b>المقاسات:</b> <small style="color:var(--main);font-weight:700">(${i18n[LANG].pick_sizes_hint})</small><br>`+ p.sz.map(s=>{
       let val = opt.sizes[s]||0; let isDisabled = (sizeSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
       return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(s)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','sizes','${esc(s)}',this.value)"></div>`
     }).join('')+`</div>` : '';
 
-    let colorHtml = p.cl && p.cl.length? `<div id="colors-${id}" style="margin-top:10px;"><b>الألوان:</b><br>`+ p.cl.map(c=>{
+    let colorHtml = p.cl && p.cl.length? `<div id="colors-${id}" style="margin-top:10px;"><b>الألوان:</b> <small style="color:var(--main);font-weight:700">(${i18n[LANG].pick_colors_hint})</small><br>`+ p.cl.map(c=>{
       let val = opt.colors[c]||0; let isDisabled = (colorSum >= totalQty) && val == 0; let bg = isDisabled ? '#e9ecef' : '#fff';
       return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span>${esc(c)}:</span><input type="number" min="0" max="${totalQty}" value="${val}" ${isDisabled?'disabled':''} style="width:70px;padding:6px;background-color:${bg};" oninput="setDist('${id}','colors','${esc(c)}',this.value)"></div>`
     }).join('')+`</div>` : '';

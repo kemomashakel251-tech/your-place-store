@@ -38,7 +38,7 @@ const i18n = {
     nav_store: "المتجر", nav_cart: "السلة", nav_ship_policy: "سياسة الشحن", nav_about: "من نحن",
     show_stock_lbl: "اظهار المخزون الكلي للعميل ✓", sizes: "المقاسات", colors: "الالوان",
     checkout_title: "إتمام الطلب", shipping_info: "بيانات الشحن", apply_btn: "تطبيق", confirm_order: "تأكيد الطلب", cancel_btn: "إلغاء", count_lbl: "العدد",
-    empty_cart: "السلة فارغة", item_out: "المنتج نفذ", added_cart: "تم الإضافة للسلة", max_stock: "المخزون الكلي المتاح فقط", select_size: "اختار مقاس لـ", select_color: "اختار لون لـ",
+    empty_cart: "السلة فارغة", item_out: "المنتج نفذ", added_cart: "تم الإضافة للسلة", max_stock: "المخزون الكلي المتاح فقط", select_size: "اختار مقاس لـ", select_color: "اختار لون لـ", pick_sizes_hint: "اختار عدد القطع لكل مقاس", pick_colors_hint: "اختار عدد الألوان لكل قطعة",
     ordered_msg: "تم الطلب بنجاح", currency: "جنيه", pcs: "قطعة",
     placeholder_name: "الاسم بالكامل", placeholder_phone: "رقم الموبايل", placeholder_address: "العنوان بالتفصيل", placeholder_coupon: "كود الكوبون", select_gov: "اختار المحافظة"
   },
@@ -46,7 +46,7 @@ const i18n = {
     nav_store: "Store", nav_cart: "Cart", nav_ship_policy: "Shipping Policy", nav_about: "About Us",
     show_stock_lbl: "Show stock to client ✓", sizes: "Sizes", colors: "Colors",
     checkout_title: "Checkout", shipping_info: "Shipping Information", apply_btn: "Apply", confirm_order: "Confirm Order", cancel_btn: "Cancel", count_lbl: "Count",
-    empty_cart: "Cart is empty", item_out: "Out of stock", added_cart: "Added to cart", max_stock: "Available stock limit reached", select_size: "Select size for ", select_color: "Select color for ",
+    empty_cart: "Cart is empty", item_out: "Out of stock", added_cart: "Added to cart", max_stock: "Available stock limit reached", select_size: "Select size for ", select_color: "Select color for ", pick_sizes_hint: "Choose the quantity for each size", pick_colors_hint: "Choose the number of each color for every piece",
     ordered_msg: "Order placed successfully", currency: "EGP", pcs: "Pcs",
     placeholder_name: "Full Name", placeholder_phone: "Mobile Number", placeholder_address: "Detailed Address", placeholder_coupon: "Coupon Code", select_gov: "Select Governorate"
   }
@@ -574,25 +574,45 @@ function checkNewProducts(){
 // ---------------- Firebase init (shared by every page) ----------------
 // Each page can define window.onSettingsLoaded / window.onProductsLoaded
 // before calling initApp() to hook into the data lifecycle.
-function initApp(){
-  Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
-    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js")
-  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment, runTransaction }, { initializeAppCheck, ReCaptchaV3Provider }]) => {
-    const app = initializeApp({apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",authDomain: "yourplace-31bd8.firebaseapp.com",projectId: "yourplace-31bd8",storageBucket: "yourplace-31bd8.firebasestorage.app",messagingSenderId: "774952140342",appId: "1:774952140342:web:1f45cdbd0897e1884c2297"});
+// بينفّذ fn بعد ما الصفحة تتحمّل وتهدى — عشان الحاجات اللي مش ضرورية لعرض المحتوى
+// (زي reCAPTCHA بتاع App Check) ماتتنافسش معاه على الشبكة وقت التحميل.
+function runWhenIdle(fn, timeout){
+  let go = () => {
+    if('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: timeout || 4000 });
+    else setTimeout(fn, 1500);
+  };
+  if(document.readyState === 'complete') go();
+  else window.addEventListener('load', go, { once: true });
+}
 
-    // App Check — بيتأكد إن أي طلب واصل لفايربيز جاي فعلاً من موقعك شغال في
-    // متصفح حقيقي (مش بوت بيضرب على الـ API مباشرة). REPLACE_WITH_RECAPTCHA_V3_SITE_KEY
-    // لازم تتستبدل بالـ Site Key (العام) اللي هتجيبه من:
-    // https://www.google.com/recaptcha/admin/create — واختار reCAPTCHA v3.
-    // من غير المفتاح ده، السطر ده هيفشل بصمت (catch) ومش هيوقف باقي الموقع.
+// App Check (reCAPTCHA v3): قبل كده كان بيتشغّل قبل أول قراءة من Firestore، وفايربيز كان بيستنى
+// تحميل reCAPTCHA وتبادل التوكن قبل ما يجيب المنتجات — ده كان بيأخّر ظهور المحتوى عند الزائر
+// الجديد. دلوقتي بيتشغّل بعد ما الصفحة تهدى (فايربيز بيدعم تفعيل App Check بعد Firestore).
+// ⚠️ لو فعّلت "Enforce" لـ App Check على Firestore من كونسول فايربيز، لازم تخلي
+// APP_CHECK_EAGER = true عشان أول قراءة تطلع ومعاها توكن، وإلا الزائر الجديد هيتمنع.
+const APP_CHECK_EAGER = false;
+function startAppCheck(app){
+  import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js").then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
     try{
       initializeAppCheck(app, {
         provider: new ReCaptchaV3Provider('6LegxmMtAAAAAAoggUEM5ivkjMKECr3ozac53X_K'),
         isTokenAutoRefreshEnabled: true
       });
     }catch(e){ console.warn('App Check not initialized:', e); }
+  }).catch(e => console.warn('App Check failed to load:', e));
+}
+
+function initApp(){
+  Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js")
+  ]).then(([{ initializeApp }, { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, serverTimestamp, increment, runTransaction }]) => {
+    const app = initializeApp({apiKey: "AIzaSyA1E6agTbU1Tmyn8I8n3ygl8C3Rz7SNRgg",authDomain: "yourplace-31bd8.firebaseapp.com",projectId: "yourplace-31bd8",storageBucket: "yourplace-31bd8.firebasestorage.app",messagingSenderId: "774952140342",appId: "1:774952140342:web:1f45cdbd0897e1884c2297"});
+
+    // App Check بيتأكد إن الطلبات الواصلة لفايربيز جاية من موقعك (مش بوت). بيتشغّل من
+    // startAppCheck فوق: بعد ما الصفحة تهدى، أو فورًا لو APP_CHECK_EAGER = true.
+    if(APP_CHECK_EAGER) startAppCheck(app);
+    else runWhenIdle(() => startAppCheck(app));
 
     db = getFirestore(app);
     window.db = db;
